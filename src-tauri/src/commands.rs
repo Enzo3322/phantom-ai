@@ -47,3 +47,25 @@ pub fn get_processing_status(state: tauri::State<'_, AppState>) -> bool {
 pub fn check_permissions() -> bool {
     crate::capture::check_screen_permission()
 }
+
+#[tauri::command]
+pub fn rebuild_windows(app: tauri::AppHandle, caller: String) {
+    use tauri::Manager;
+
+    let labels: Vec<String> = app
+        .webview_windows()
+        .keys()
+        .filter(|l| **l != caller)
+        .cloned()
+        .collect();
+
+    let h = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        for label in &labels {
+            if let Some(window) = h.get_webview_window(label) {
+                let _ = window.destroy();
+            }
+            crate::create_panel(&h, label);
+        }
+    });
+}

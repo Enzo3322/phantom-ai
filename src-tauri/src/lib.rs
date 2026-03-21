@@ -8,7 +8,7 @@ use state::AppState;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, ShortcutState};
 
-fn create_panel(app: &tauri::AppHandle, label: &str) {
+pub fn create_panel(app: &tauri::AppHandle, label: &str) {
     let (width, height) = match label {
         "config" => (460.0, 520.0),
         "response" => (380.0, 160.0),
@@ -190,6 +190,7 @@ pub fn run() {
             commands::get_last_response,
             commands::get_processing_status,
             commands::check_permissions,
+            commands::rebuild_windows,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

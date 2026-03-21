@@ -151,7 +151,6 @@ export function ConfigPanel() {
               <span className="toggle-knob" />
             </button>
           </div>
-          <span className="field-hint">Restart app after changing</span>
         </div>
 
         <div className="field">

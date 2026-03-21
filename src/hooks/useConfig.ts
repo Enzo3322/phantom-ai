@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { load } from "@tauri-apps/plugin-store";
 
 interface Config {
@@ -42,14 +43,26 @@ export function useConfig() {
         await store.set("glass_effect", newConfig.glass_effect);
         await store.save();
 
+        const glassChanged = newConfig.glass_effect !== config.glass_effect;
         setConfig(newConfig);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+
+        if (glassChanged) {
+          // Update current window theme immediately
+          if (newConfig.glass_effect) {
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            document.documentElement.setAttribute("data-theme", "solid");
+          }
+          // Rebuild other windows (not the current one)
+          await invoke("rebuild_windows", { caller: getCurrentWindow().label });
+        }
       } finally {
         setSaving(false);
       }
     },
-    []
+    [config.glass_effect]
   );
 
   return { config, save, saving, saved };
