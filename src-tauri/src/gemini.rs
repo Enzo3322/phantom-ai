@@ -89,25 +89,39 @@ pub async fn analyze_screenshot(
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let raw_body = response.text().await.unwrap_or_default();
-        if let Ok(parsed) = serde_json::from_str::<GeminiResponse>(&raw_body) {
-            if let Some(error) = parsed.error {
-                return Err(format!("Gemini API error ({}): {}", status, error.message));
+    let status = response.status();
+    let raw = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {e}"))?;
+
+    eprintln!("[phantom] gemini status={status} body_len={}", raw.len());
+    eprintln!("[phantom] gemini body: {}", &raw[..raw.len().min(500)]);
+
+    if !status.is_success() {
+        if let Ok(parsed) = serde_json::from_str::<GeminiResponse>(&raw) {
+            if let Some(err) = parsed.error {
+                return Err(format!("Gemini API error ({}): {}", status, err.message));
             }
         }
-        return Err(format!("Gemini API error ({}): {}", status, raw_body));
+        return Err(format!("Gemini API error ({}): {}", status, &raw[..raw.len().min(300)]));
     }
 
-    let body: GeminiResponse = response
-        .json()
-        .await
+    let body: GeminiResponse = serde_json::from_str(&raw)
         .map_err(|e| format!("Failed to parse response: {e}"))?;
 
-    body.candidates
+    let result = body
+        .candidates
         .and_then(|c| c.into_iter().next())
         .and_then(|c| c.content.parts.into_iter().next())
         .map(|p| p.text)
-        .ok_or_else(|| "Empty response from Gemini".to_string())
+        .unwrap_or_default();
+
+    eprintln!("[phantom] gemini result: {}", &result[..result.len().min(200)]);
+
+    if result.is_empty() {
+        return Err("Empty response from Gemini".to_string());
+    }
+
+    Ok(result)
 }

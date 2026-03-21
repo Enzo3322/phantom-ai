@@ -51,10 +51,9 @@ fn toggle_window(app: &tauri::AppHandle, label: &str) {
     }
 }
 
-fn show_window(app: &tauri::AppHandle, label: &str) {
+fn show_window_no_focus(app: &tauri::AppHandle, label: &str) {
     if let Some(window) = app.get_webview_window(label) {
         let _ = window.show();
-        let _ = window.set_focus();
     } else {
         create_panel(app, label);
     }
@@ -87,7 +86,7 @@ async fn handle_capture(app: tauri::AppHandle) {
     let api_key = state.get_api_key();
     if api_key.is_empty() {
         let app_clone = app.clone();
-        run_on_main(&app, move || show_window(&app_clone, "response")).await;
+        run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
         let _ = app.emit("capture-error", "API key not configured. Press Cmd+Shift+C to open settings.");
         return;
     }
@@ -98,7 +97,7 @@ async fn handle_capture(app: tauri::AppHandle) {
     eprintln!("[phantom] capture: checking permission");
     if !capture::check_screen_permission() {
         let app_clone = app.clone();
-        run_on_main(&app, move || show_window(&app_clone, "response")).await;
+        run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
         let _ = app.emit("capture-error", "Screen recording permission required.");
         return;
     }
@@ -119,7 +118,7 @@ async fn handle_capture(app: tauri::AppHandle) {
             state.set_processing(false);
             state.set_last_response(Some(format!("Error: {e}")));
             let app_clone = app.clone();
-            run_on_main(&app, move || show_window(&app_clone, "response")).await;
+            run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
             return;
         }
         Err(e) => {
@@ -127,7 +126,7 @@ async fn handle_capture(app: tauri::AppHandle) {
             state.set_processing(false);
             state.set_last_response(Some(format!("Error: {e}")));
             let app_clone = app.clone();
-            run_on_main(&app, move || show_window(&app_clone, "response")).await;
+            run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
             return;
         }
     };
@@ -135,7 +134,7 @@ async fn handle_capture(app: tauri::AppHandle) {
     // Show response panel on main thread, then wait for webview to load
     eprintln!("[phantom] capture: showing response panel");
     let app_clone = app.clone();
-    run_on_main(&app, move || show_window(&app_clone, "response")).await;
+    run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     let _ = app.emit("processing-start", ());
 
