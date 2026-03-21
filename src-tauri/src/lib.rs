@@ -51,6 +51,15 @@ fn toggle_window(app: &tauri::AppHandle, label: &str) {
     }
 }
 
+fn show_window(app: &tauri::AppHandle, label: &str) {
+    if let Some(window) = app.get_webview_window(label) {
+        let _ = window.show();
+        let _ = window.set_focus();
+    } else {
+        create_panel(app, label);
+    }
+}
+
 fn hide_all_windows(app: &tauri::AppHandle) {
     for label in &["config", "response"] {
         if let Some(window) = app.get_webview_window(label) {
@@ -59,58 +68,93 @@ fn hide_all_windows(app: &tauri::AppHandle) {
     }
 }
 
-async fn handle_capture(app: tauri::AppHandle) {
-    hide_all_windows(&app);
+async fn run_on_main<F: FnOnce() + Send + 'static>(app: &tauri::AppHandle, f: F) {
+    let _ = app.run_on_main_thread(f);
+    // Give the main thread time to execute
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+}
 
-    // Wait for windows to fully hide
+async fn handle_capture(app: tauri::AppHandle) {
+    eprintln!("[phantom] capture: starting");
+
+    // Hide windows on main thread
+    let app_clone = app.clone();
+    run_on_main(&app, move || hide_all_windows(&app_clone)).await;
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
     let state = app.state::<AppState>();
 
-    let api_key = state.api_key.lock().unwrap().clone();
+    let api_key = state.get_api_key();
     if api_key.is_empty() {
+        let app_clone = app.clone();
+        run_on_main(&app, move || show_window(&app_clone, "response")).await;
         let _ = app.emit("capture-error", "API key not configured. Press Cmd+Shift+C to open settings.");
-        toggle_window(&app, "response");
         return;
     }
 
-    let model = state.model.lock().unwrap().clone();
-    let prompt = state.prompt.lock().unwrap().clone();
+    let model = state.get_model();
+    let prompt = state.get_prompt();
 
+    eprintln!("[phantom] capture: checking permission");
     if !capture::check_screen_permission() {
-        let _ = app.emit("capture-error", "Screen recording permission required. Open System Settings > Privacy & Security > Screen Recording and grant access to Phantom.");
-        toggle_window(&app, "response");
+        let app_clone = app.clone();
+        run_on_main(&app, move || show_window(&app_clone, "response")).await;
+        let _ = app.emit("capture-error", "Screen recording permission required.");
         return;
     }
 
-    *state.is_processing.lock().unwrap() = true;
-    let _ = app.emit("processing-start", ());
+    state.set_last_response(None);
+    state.set_processing(true);
 
-    // Show response panel with loading state
-    toggle_window(&app, "response");
+    eprintln!("[phantom] capture: taking screenshot");
+    let capture_result = tokio::task::spawn_blocking(capture::capture_screen).await;
 
-    let base64_image = match capture::capture_screen() {
-        Ok(img) => img,
+    let base64_image = match capture_result {
+        Ok(Ok(img)) => {
+            eprintln!("[phantom] capture: screenshot ok, {} bytes base64", img.len());
+            img
+        }
+        Ok(Err(e)) => {
+            eprintln!("[phantom] capture: screenshot error: {e}");
+            state.set_processing(false);
+            state.set_last_response(Some(format!("Error: {e}")));
+            let app_clone = app.clone();
+            run_on_main(&app, move || show_window(&app_clone, "response")).await;
+            return;
+        }
         Err(e) => {
-            *state.is_processing.lock().unwrap() = false;
-            let _ = app.emit("capture-error", e);
+            eprintln!("[phantom] capture: task join error: {e}");
+            state.set_processing(false);
+            state.set_last_response(Some(format!("Error: {e}")));
+            let app_clone = app.clone();
+            run_on_main(&app, move || show_window(&app_clone, "response")).await;
             return;
         }
     };
 
+    // Show response panel on main thread, then wait for webview to load
+    eprintln!("[phantom] capture: showing response panel");
+    let app_clone = app.clone();
+    run_on_main(&app, move || show_window(&app_clone, "response")).await;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let _ = app.emit("processing-start", ());
+
+    eprintln!("[phantom] capture: calling gemini (model={model})");
     match gemini::analyze_screenshot(&api_key, &model, &base64_image, &prompt).await {
         Ok(response) => {
-            *state.last_response.lock().unwrap() = Some(response.clone());
-            *state.is_processing.lock().unwrap() = false;
+            eprintln!("[phantom] capture: gemini ok, {} chars", response.len());
+            state.set_last_response(Some(response.clone()));
+            state.set_processing(false);
             let _ = app.emit("capture-response", response);
         }
         Err(e) => {
-            let error_msg = format!("Error: {e}");
-            *state.last_response.lock().unwrap() = Some(error_msg.clone());
-            *state.is_processing.lock().unwrap() = false;
-            let _ = app.emit("capture-error", error_msg);
+            eprintln!("[phantom] capture: gemini error: {e}");
+            state.set_processing(false);
+            state.set_last_response(Some(format!("Error: {e}")));
+            let _ = app.emit("capture-error", format!("Error: {e}"));
         }
     }
+    eprintln!("[phantom] capture: done");
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -144,14 +188,12 @@ pub fn run() {
             commands::save_config,
             commands::get_last_response,
             commands::get_processing_status,
-            commands::capture_and_analyze,
             commands::check_permissions,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             stealth::set_accessory_mode();
 
-            // Register global shortcuts
             let shortcut_s = tauri_plugin_global_shortcut::Shortcut::new(
                 Some(Modifiers::SUPER | Modifiers::SHIFT),
                 Code::KeyS,
@@ -169,7 +211,6 @@ pub fn run() {
             app.global_shortcut().register(shortcut_c)?;
             app.global_shortcut().register(shortcut_a)?;
 
-            // Load saved config from store
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 load_config_from_store(&handle);
@@ -189,17 +230,17 @@ fn load_config_from_store(app: &tauri::AppHandle) {
 
         if let Some(val) = store.get("api_key") {
             if let Some(s) = val.as_str() {
-                *state.api_key.lock().unwrap() = s.to_string();
+                state.set_api_key(s.to_string());
             }
         }
         if let Some(val) = store.get("model") {
             if let Some(s) = val.as_str() {
-                *state.model.lock().unwrap() = s.to_string();
+                state.set_model(s.to_string());
             }
         }
         if let Some(val) = store.get("prompt") {
             if let Some(s) = val.as_str() {
-                *state.prompt.lock().unwrap() = s.to_string();
+                state.set_prompt(s.to_string());
             }
         }
     }
