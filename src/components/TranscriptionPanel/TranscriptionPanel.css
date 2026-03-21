@@ -1,3 +1,12 @@
+.transcription-panel-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-panel);
+  border-radius: 14px;
+}
+
 .transcription-titlebar {
   display: flex;
   align-items: center;
@@ -178,7 +187,10 @@
 }
 
 .transcription-gemini {
+  flex: 1;
   padding: 0 12px 12px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .gemini-divider {

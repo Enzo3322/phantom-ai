@@ -501,7 +501,7 @@ fn transcribe_segment(
     ctx: &WhisperContext,
     audio: &[f32],
     language: &str,
-    previous_text: &str,
+    _previous_text: &str,
     vocab_seed: &str,
 ) -> Option<String> {
     // 1. Trim trailing silence — prevents hallucinations from silence at end of utterance
@@ -513,14 +513,16 @@ fn transcribe_segment(
 
     let mut state = ctx.create_state().ok()?;
 
-    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 5 });
+    // beam_size=1 has LOWEST hallucination rate (research confirmed)
+    // higher beam sizes improve accuracy but increase hallucination on non-speech
+    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
     params.set_n_threads(4);
     params.set_print_progress(false);
     params.set_print_realtime(false);
     params.set_print_timestamps(false);
     params.set_translate(false);
 
-    // 2. For shorter utterances (< 8s), force single segment to prevent repetition tail
+    // For shorter utterances (< 8s), force single segment to prevent repetition tail
     let is_short = audio.len() < SAMPLE_RATE * 8;
     params.set_single_segment(is_short);
 
@@ -530,32 +532,23 @@ fn transcribe_segment(
         params.set_language(Some(language));
     }
 
-    // --- Anti-hallucination settings ---
+    // --- Anti-hallucination settings (values from whisper.cpp docs + research) ---
     params.set_suppress_blank(true);
+    // DO NOT enable suppress_non_speech_tokens — it CAUSES hallucination
+    // (disabled by default in whisper.cpp commit a94897bc)
     params.set_no_speech_thold(0.6);
-    params.set_logprob_thold(-1.0);
     params.set_entropy_thold(2.4);
+    params.set_logprob_thold(-1.0);
     params.set_max_initial_ts(1.0);
 
-    // Initial prompt: vocab seed biases whisper toward known terms + previous text for continuity
-    let mut prompt_parts = Vec::new();
+    // Initial prompt: ONLY vocab seed for term biasing
+    // DO NOT condition on previous transcript — causes hallucination feedback loops
+    // (whisper.cpp issue #1511, discussion #1490)
     if !vocab_seed.is_empty() {
-        prompt_parts.push(vocab_seed.to_string());
-    }
-    if !previous_text.is_empty() {
-        let tail = if previous_text.len() > 150 {
-            &previous_text[previous_text.len() - 150..]
-        } else {
-            previous_text
-        };
-        prompt_parts.push(tail.to_string());
-    }
-    if !prompt_parts.is_empty() {
-        let prompt = prompt_parts.join(". ");
-        params.set_initial_prompt(&prompt);
+        params.set_initial_prompt(vocab_seed);
     }
 
-    // Deterministic decoding — NO temperature fallback (causes repetitive loops)
+    // Deterministic decoding, NO temperature fallback (prevents repetitive loops)
     params.set_temperature(0.0);
     params.set_temperature_inc(0.0);
 
@@ -622,49 +615,68 @@ fn is_hallucination(text: &str) -> bool {
         return true;
     }
 
-    // Known hallucination phrases (exact match)
-    let hallucinations = [
-        "thank you",
-        "thank you for watching",
-        "thanks for watching",
-        "subscribe",
-        "like and subscribe",
-        "see you next time",
-        "see you in the next video",
-        "bye bye",
-        "bye",
-        "goodbye",
-        "the end",
-        "you",
-        "so",
-        "oh",
-        "hmm",
-        "um",
-        "uh",
-        "ah",
-        "music",
-        "applause",
-        "silence",
-        "laughter",
-        "obrigado",
-        "obrigada",
-        "tchau",
+    // --- Exact match hallucinations ---
+    let exact = [
+        "thank you", "thank you for watching", "thanks for watching",
+        "thank you so much", "thanks for listening",
+        "subscribe", "like and subscribe", "please subscribe",
+        "see you next time", "see you in the next video", "see you later",
+        "bye bye", "bye", "goodbye", "good night",
+        "the end", "you", "so", "oh", "hmm", "um", "uh", "ah", "huh",
+        "what", "what?", "why", "how", "yes", "no", "ok", "okay",
+        "music", "applause", "silence", "laughter",
+        "obrigado", "obrigada", "tchau", "valeu",
         "legendas pela comunidade",
-        "subtitles by",
-        "amara.org",
-        "www.",
+        "sim", "não", "tá", "né", "bom", "bem", "então",
     ];
 
-    for pattern in &hallucinations {
-        if trimmed == *pattern || trimmed.starts_with(*pattern) && trimmed.len() < pattern.len() + 5 {
+    if exact.contains(&trimmed) {
+        return true;
+    }
+
+    // --- Prefix/contains match for common hallucination patterns ---
+    let patterns = [
+        "subtitles by", "amara.org", "www.", "http",
+        "translated by", "captions by", "copyright",
+        "all rights reserved", "please like",
+        "don't forget to", "hit the bell",
+        "follow me on", "check out",
+    ];
+
+    for pattern in &patterns {
+        if trimmed.starts_with(pattern) || trimmed.contains(pattern) {
             return true;
         }
     }
 
-    // Detect repetitive text (hallucination loops)
+    // --- Question-form hallucinations (whisper generates random questions) ---
+    let question_hallucinations = [
+        "what's the reason", "what is the reason",
+        "what do you think", "what do you mean",
+        "what is this", "what is that",
+        "what are you doing", "what happened",
+        "how are you", "how do you do",
+        "who are you", "who is this",
+        "where are you", "where is this",
+        "why is that", "why not",
+        "is that so", "is it", "is that right",
+        "do you know", "did you know",
+        "can you", "could you",
+        "really", "right",
+    ];
+
+    if question_hallucinations.contains(&trimmed) {
+        return true;
+    }
+
     let words: Vec<&str> = trimmed.split_whitespace().collect();
 
-    // Single word repeated: "you you you you"
+    // --- Very short segments are suspicious ---
+    if words.len() <= 2 && trimmed.len() < 10 {
+        return true;
+    }
+
+    // --- Single word repeated: "you you you you" ---
     if words.len() >= 3 {
         let first = words[0];
         if words.iter().filter(|&&w| w == first).count() >= words.len() * 2 / 3 {
@@ -672,19 +684,25 @@ fn is_hallucination(text: &str) -> bool {
         }
     }
 
-    // Bigram repeated: "Thank you. Thank you. Thank you."
+    // --- Bigram repeated: "Thank you. Thank you. Thank you." ---
     if words.len() >= 4 {
         let bigram = format!("{} {}", words[0], words.get(1).unwrap_or(&""));
-        if !bigram.trim().is_empty() && trimmed.matches(&bigram).count() >= 3 {
+        if !bigram.trim().is_empty() && trimmed.matches(&bigram).count() >= 2 {
             return true;
         }
     }
 
-    // Segment is suspiciously short and matches common filler
-    if words.len() <= 2 && trimmed.len() < 8 {
-        let fillers = ["ok", "okay", "so", "well", "right", "yeah", "yes", "no",
-                       "sim", "não", "tá", "né", "bom", "bem", "então"];
-        if fillers.contains(&trimmed) {
+    // --- Detect language mismatch: segment entirely in a foreign script ---
+    // If most chars are non-Latin (e.g., Arabic, Cyrillic, CJK), likely hallucination
+    // Detect foreign scripts (Arabic, Cyrillic, CJK, etc.) — likely hallucination
+    let alpha_chars: Vec<char> = trimmed.chars().filter(|c| c.is_alphabetic()).collect();
+    if alpha_chars.len() > 5 {
+        let non_latin = alpha_chars.iter().filter(|c| {
+            let cp = **c as u32;
+            // Latin Basic (0000–007F) + Latin-1 Supplement (0080–00FF) + Latin Extended (0100–024F)
+            cp > 0x024F
+        }).count();
+        if non_latin > alpha_chars.len() / 2 {
             return true;
         }
     }

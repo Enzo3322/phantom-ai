@@ -1,23 +1,53 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow, LogicalSize, LogicalPosition, currentMonitor } from "@tauri-apps/api/window";
 import Markdown from "react-markdown";
-import { GlassContainer } from "../shared/GlassContainer";
 import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { useTranscription } from "../../hooks/useTranscription";
 import { useGemini } from "../../hooks/useGemini";
 import "./TranscriptionPanel.css";
 
+const WIDTH = 420;
+const MARGIN = 16;
+
 export function TranscriptionPanel() {
   const { transcript, isRecording, error, clearTranscript } = useTranscription();
   const { response, loading: geminiLoading } = useGemini();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const geminiRef = useRef<HTMLDivElement>(null);
   const [sending, setSending] = useState(false);
+
+  const expandToFullHeight = useCallback(async () => {
+    const monitor = await currentMonitor();
+    if (!monitor) return;
+
+    const screenHeight = monitor.size.height / monitor.scaleFactor;
+    const screenWidth = monitor.size.width / monitor.scaleFactor;
+    const win = getCurrentWindow();
+
+    await win.setSize(new LogicalSize(WIDTH, screenHeight - MARGIN * 2));
+    await win.setPosition(new LogicalPosition(screenWidth - WIDTH - MARGIN, MARGIN));
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [transcript]);
+
+  // When Gemini response arrives, expand window to full height on the right
+  useEffect(() => {
+    if (response && !geminiLoading) {
+      expandToFullHeight();
+    }
+  }, [response, geminiLoading, expandToFullHeight]);
+
+  // Auto-scroll gemini response
+  useEffect(() => {
+    if (geminiRef.current) {
+      geminiRef.current.scrollTop = geminiRef.current.scrollHeight;
+    }
+  }, [response]);
 
   const handleSendToGemini = async () => {
     if (!transcript.trim()) return;
@@ -54,7 +84,7 @@ export function TranscriptionPanel() {
   };
 
   return (
-    <GlassContainer>
+    <div className="transcription-panel-root">
       <div className="transcription-titlebar" data-tauri-drag-region>
         <div className="transcription-title-left">
           <span
@@ -118,7 +148,7 @@ export function TranscriptionPanel() {
       )}
 
       {(geminiLoading || response) && (
-        <div className="transcription-gemini">
+        <div className="transcription-gemini" ref={geminiRef}>
           <div className="gemini-divider" />
           {geminiLoading && <LoadingSpinner />}
           {response && !geminiLoading && (
@@ -128,6 +158,6 @@ export function TranscriptionPanel() {
           )}
         </div>
       )}
-    </GlassContainer>
+    </div>
   );
 }
