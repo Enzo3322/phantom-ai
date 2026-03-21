@@ -11,7 +11,7 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, ShortcutS
 fn create_panel(app: &tauri::AppHandle, label: &str) {
     let (width, height) = match label {
         "config" => (460.0, 520.0),
-        "response" => (380.0, 420.0),
+        "response" => (380.0, 160.0),
         _ => (400.0, 400.0),
     };
 
@@ -23,8 +23,7 @@ fn create_panel(app: &tauri::AppHandle, label: &str) {
         .skip_taskbar(true)
         .always_on_top(true)
         .visible(true)
-        .resizable(false)
-        .center()
+        .resizable(label == "response")
         .build();
 
     if let Ok(window) = window {

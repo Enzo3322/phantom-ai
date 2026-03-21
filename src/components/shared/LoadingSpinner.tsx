@@ -1,31 +1,34 @@
 export function LoadingSpinner() {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "16px",
-        padding: "48px 24px",
-      }}
-    >
-      <div
-        style={{
-          width: "32px",
-          height: "32px",
-          border: "2px solid rgba(255, 255, 255, 0.1)",
-          borderTopColor: "var(--text-accent)",
-          borderRadius: "50%",
-          animation: "spin 0.8s linear infinite",
-        }}
-      />
-      <span style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
-        Analyzing screenshot...
-      </span>
+    <div className="loading-bubbles">
+      <span className="bubble" />
+      <span className="bubble" />
+      <span className="bubble" />
       <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+        .loading-bubbles {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 16px 0;
+        }
+        .bubble {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--text-accent);
+          opacity: 0.3;
+          animation: pulse 1.2s ease-in-out infinite;
+        }
+        .bubble:nth-child(2) {
+          animation-delay: 0.15s;
+        }
+        .bubble:nth-child(3) {
+          animation-delay: 0.3s;
+        }
+        @keyframes pulse {
+          0%, 60%, 100% { opacity: 0.3; transform: scale(1); }
+          30% { opacity: 1; transform: scale(1.3); }
         }
       `}</style>
     </div>

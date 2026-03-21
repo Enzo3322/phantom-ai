@@ -1,39 +1,52 @@
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { useState } from "react";
+import { getCurrentWindow, LogicalSize, LogicalPosition } from "@tauri-apps/api/window";
+import { currentMonitor } from "@tauri-apps/api/window";
+import { useRef, useEffect, useCallback } from "react";
 import Markdown from "react-markdown";
-import { GlassContainer } from "../shared/GlassContainer";
 import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { useGemini } from "../../hooks/useGemini";
 import "./ResponsePanel.css";
 
+const MIN_HEIGHT = 80;
+const MAX_HEIGHT = 600;
+const WIDTH = 380;
+const PADDING_V = 24;
+const MARGIN = 16;
+
 export function ResponsePanel() {
   const { response, loading, error } = useGemini();
-  const [copied, setCopied] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const handleCopy = async () => {
-    if (response) {
-      try {
-        await writeText(response);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // clipboard not available
-      }
+  const resizeToFit = useCallback(async () => {
+    if (!contentRef.current) return;
+
+    // Wait a frame for content to render
+    await new Promise((r) => requestAnimationFrame(r));
+
+    const contentHeight = contentRef.current.scrollHeight;
+    const totalHeight = Math.min(
+      Math.max(contentHeight + PADDING_V, MIN_HEIGHT),
+      MAX_HEIGHT
+    );
+
+    const win = getCurrentWindow();
+    await win.setSize(new LogicalSize(WIDTH, totalHeight));
+
+    // Position top-right
+    const monitor = await currentMonitor();
+    if (monitor) {
+      const screenWidth = monitor.size.width / monitor.scaleFactor;
+      const x = screenWidth - WIDTH - MARGIN;
+      await win.setPosition(new LogicalPosition(x, MARGIN));
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    resizeToFit();
+  }, [response, loading, error, resizeToFit]);
 
   return (
-    <GlassContainer>
-      <div className="titlebar" data-tauri-drag-region>
-        <span className="titlebar-title">Phantom</span>
-        {response && (
-          <button className="action-btn" onClick={handleCopy}>
-            {copied ? "Copied" : "Copy"}
-          </button>
-        )}
-      </div>
-
-      <div className="response-content">
+    <div className="response-panel" data-tauri-drag-region>
+      <div className="response-content" ref={contentRef}>
         {loading && <LoadingSpinner />}
 
         {error && !loading && (
@@ -56,6 +69,6 @@ export function ResponsePanel() {
           </div>
         )}
       </div>
-    </GlassContainer>
+    </div>
   );
 }

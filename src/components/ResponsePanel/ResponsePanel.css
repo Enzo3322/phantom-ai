@@ -1,44 +1,14 @@
-.titlebar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  padding: 0 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
+.response-panel {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   cursor: grab;
 }
 
-.titlebar-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  pointer-events: none;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.action-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 5px;
-  color: var(--text-tertiary);
-  font-family: var(--font);
-  font-size: 10px;
-  padding: 2px 8px;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-}
-
 .response-content {
-  flex: 1;
-  padding: 14px;
+  padding: 12px 14px;
   overflow-y: auto;
+  max-height: 100%;
 }
 
 .markdown-body {
@@ -47,6 +17,7 @@
   line-height: 1.6;
   user-select: text;
   -webkit-user-select: text;
+  cursor: auto;
 }
 
 .markdown-body h1,
@@ -63,6 +34,10 @@
 
 .markdown-body p {
   margin-bottom: 10px;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
 }
 
 .markdown-body code {
@@ -123,7 +98,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 56px;
   opacity: 0.4;
 }
 
