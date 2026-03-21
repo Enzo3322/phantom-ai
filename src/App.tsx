@@ -8,10 +8,8 @@ function App() {
   const label = getCurrentWindow().label;
 
   useEffect(() => {
-    invoke<{ glass_effect: boolean }>("get_config").then(({ glass_effect }) => {
-      if (!glass_effect) {
-        document.documentElement.setAttribute("data-theme", "solid");
-      }
+    invoke<{ opacity: number }>("get_config").then(({ opacity }) => {
+      document.documentElement.style.setProperty("--bg-opacity", String(opacity));
     });
   }, []);
 

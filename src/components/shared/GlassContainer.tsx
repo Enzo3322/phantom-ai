@@ -14,6 +14,8 @@ export const GlassContainer = forwardRef<HTMLDivElement, GlassContainerProps>(
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          background: "var(--bg-panel)",
+          borderRadius: "14px",
         }}
       >
         {children}

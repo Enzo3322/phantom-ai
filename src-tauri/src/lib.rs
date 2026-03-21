@@ -27,15 +27,6 @@ pub fn create_panel(app: &tauri::AppHandle, label: &str) {
         .build();
 
     if let Ok(window) = window {
-        #[cfg(target_os = "macos")]
-        {
-            let glass = app.state::<AppState>().get_glass_effect();
-            if glass {
-                use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
-                let _ = apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, Some(14.0));
-            }
-        }
-
         stealth::apply_stealth(&window);
     }
 }
@@ -71,14 +62,12 @@ fn hide_all_windows(app: &tauri::AppHandle) {
 
 async fn run_on_main<F: FnOnce() + Send + 'static>(app: &tauri::AppHandle, f: F) {
     let _ = app.run_on_main_thread(f);
-    // Give the main thread time to execute
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 }
 
 async fn handle_capture(app: tauri::AppHandle) {
     eprintln!("[phantom] capture: starting");
 
-    // Hide windows on main thread
     let app_clone = app.clone();
     run_on_main(&app, move || hide_all_windows(&app_clone)).await;
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
@@ -133,7 +122,6 @@ async fn handle_capture(app: tauri::AppHandle) {
         }
     };
 
-    // Show response panel on main thread, then wait for webview to load
     eprintln!("[phantom] capture: showing response panel");
     let app_clone = app.clone();
     run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
@@ -190,7 +178,6 @@ pub fn run() {
             commands::get_last_response,
             commands::get_processing_status,
             commands::check_permissions,
-            commands::rebuild_windows,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -245,9 +232,9 @@ fn load_config_from_store(app: &tauri::AppHandle) {
                 state.set_prompt(s.to_string());
             }
         }
-        if let Some(val) = store.get("glass_effect") {
-            if let Some(b) = val.as_bool() {
-                state.set_glass_effect(b);
+        if let Some(val) = store.get("opacity") {
+            if let Some(n) = val.as_f64() {
+                state.set_opacity(n);
             }
         }
     }

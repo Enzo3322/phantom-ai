@@ -41,8 +41,8 @@ export function ConfigPanel() {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gemini-2.0-flash");
   const [prompt, setPrompt] = useState("");
+  const [opacity, setOpacity] = useState(0.85);
   const [showKey, setShowKey] = useState(false);
-  const [glassEffect, setGlassEffect] = useState(true);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const resizeToFit = useCallback(async () => {
@@ -60,11 +60,16 @@ export function ConfigPanel() {
     setApiKey(config.api_key);
     setModel(config.model);
     setPrompt(config.prompt);
-    setGlassEffect(config.glass_effect);
+    setOpacity(config.opacity);
   }, [config]);
 
+  const handleOpacityChange = (val: number) => {
+    setOpacity(val);
+    document.documentElement.style.setProperty("--bg-opacity", String(val));
+  };
+
   const handleSave = () => {
-    save({ api_key: apiKey, model, prompt, glass_effect: glassEffect });
+    save({ api_key: apiKey, model, prompt, opacity });
   };
 
   const handleClose = () => {
@@ -141,16 +146,19 @@ export function ConfigPanel() {
         </div>
 
         <div className="field">
-          <label>Appearance</label>
-          <div className="toggle-row">
-            <span className="toggle-label">Glass Effect</span>
-            <button
-              className={`toggle-switch ${glassEffect ? "active" : ""}`}
-              onClick={() => setGlassEffect(!glassEffect)}
-            >
-              <span className="toggle-knob" />
-            </button>
-          </div>
+          <label>
+            Opacity
+            <span className="opacity-value">{Math.round(opacity * 100)}%</span>
+          </label>
+          <input
+            type="range"
+            min="0.1"
+            max="1"
+            step="0.05"
+            value={opacity}
+            onChange={(e) => handleOpacityChange(Number(e.target.value))}
+            className="opacity-slider"
+          />
         </div>
 
         <div className="field">
@@ -176,7 +184,7 @@ export function ConfigPanel() {
           onClick={handleSave}
           disabled={saving}
         >
-          {saved ? "Saved ✓" : saving ? "Saving..." : "Save"}
+          {saved ? "Saved" : saving ? "Saving..." : "Save"}
         </button>
       </div>
     </GlassContainer>
