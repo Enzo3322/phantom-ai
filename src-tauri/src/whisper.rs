@@ -129,6 +129,14 @@ pub async fn download_model(app: AppHandle, size: String) -> Result<(), String> 
 // VAD - Voice Activity Detection state machine
 // ==========================================
 
+use crate::audio::{TaggedAudio, Speaker};
+
+/// Completed utterance with speaker attribution
+pub struct Utterance {
+    pub audio: Vec<f32>,
+    pub speaker: Speaker,
+}
+
 #[derive(Debug, PartialEq)]
 enum VadState {
     Silence,
@@ -146,6 +154,9 @@ struct Vad {
     speech_buffer: Vec<f32>,
     pre_speech_buffer: Vec<f32>,
     frame_count: u64,
+    // Speaker tracking: accumulate energy per source during an utterance
+    user_energy: f32,
+    other_energy: f32,
 }
 
 impl Vad {
@@ -159,6 +170,21 @@ impl Vad {
             speech_buffer: Vec::new(),
             pre_speech_buffer: Vec::new(),
             frame_count: 0,
+            user_energy: 0.0,
+            other_energy: 0.0,
+        }
+    }
+
+    fn reset_speaker_tracking(&mut self) {
+        self.user_energy = 0.0;
+        self.other_energy = 0.0;
+    }
+
+    fn dominant_speaker(&self) -> Speaker {
+        if self.user_energy >= self.other_energy {
+            Speaker::User
+        } else {
+            Speaker::Other
         }
     }
 
@@ -186,11 +212,18 @@ impl Vad {
         }
     }
 
-    /// Feed audio samples and return completed utterances
-    fn process(&mut self, samples: &[f32]) -> Vec<Vec<f32>> {
+    /// Feed tagged audio and return completed utterances with speaker attribution
+    fn process(&mut self, tagged: &TaggedAudio) -> Vec<Utterance> {
         let mut utterances = Vec::new();
 
-        for frame in samples.chunks(VAD_FRAME_SIZE) {
+        // Track energy for speaker attribution
+        let chunk_rms = Self::frame_rms(&tagged.samples);
+        match tagged.source {
+            Speaker::User => self.user_energy += chunk_rms,
+            Speaker::Other => self.other_energy += chunk_rms,
+        }
+
+        for frame in tagged.samples.chunks(VAD_FRAME_SIZE) {
             if frame.len() < VAD_FRAME_SIZE / 2 {
                 continue;
             }
@@ -261,8 +294,10 @@ impl Vad {
                     // Force processing if utterance gets too long
                     if self.speech_buffer.len() >= MAX_UTTERANCE_SAMPLES {
                         eprintln!("[phantom] vad: max utterance length, forcing transcription");
-                        let utterance = std::mem::take(&mut self.speech_buffer);
-                        utterances.push(utterance);
+                        let speaker = self.dominant_speaker();
+                        let audio = std::mem::take(&mut self.speech_buffer);
+                        utterances.push(Utterance { audio, speaker });
+                        self.reset_speaker_tracking();
                     }
                 }
                 VadState::MaybeSilence => {
@@ -275,15 +310,17 @@ impl Vad {
                         self.silence_frame_count += 1;
                         if self.silence_frame_count >= SILENCE_FRAMES {
                             let duration = self.speech_buffer.len() as f32 / SAMPLE_RATE as f32;
-                            eprintln!("[phantom] vad: utterance complete ({:.1}s)", duration);
+                            let speaker = self.dominant_speaker();
+                            eprintln!("[phantom] vad: utterance complete ({:.1}s, speaker={:?})", duration, speaker);
 
-                            let utterance = std::mem::take(&mut self.speech_buffer);
-                            if utterance.len() >= MIN_UTTERANCE_SAMPLES {
-                                utterances.push(utterance);
+                            let audio = std::mem::take(&mut self.speech_buffer);
+                            if audio.len() >= MIN_UTTERANCE_SAMPLES {
+                                utterances.push(Utterance { audio, speaker });
                             }
                             self.state = VadState::Silence;
                             self.silence_frame_count = 0;
                             self.pre_speech_buffer.clear();
+                            self.reset_speaker_tracking();
                         }
                     }
                 }
@@ -294,13 +331,16 @@ impl Vad {
     }
 
     /// Flush any remaining speech when recording stops
-    fn flush(&mut self) -> Option<Vec<f32>> {
+    fn flush(&mut self) -> Option<Utterance> {
         if self.speech_buffer.len() >= MIN_UTTERANCE_SAMPLES {
+            let speaker = self.dominant_speaker();
             eprintln!(
-                "[phantom] vad: flushing remaining buffer ({:.1}s)",
-                self.speech_buffer.len() as f32 / SAMPLE_RATE as f32
+                "[phantom] vad: flushing remaining buffer ({:.1}s, speaker={:?})",
+                self.speech_buffer.len() as f32 / SAMPLE_RATE as f32, speaker
             );
-            Some(std::mem::take(&mut self.speech_buffer))
+            let audio = std::mem::take(&mut self.speech_buffer);
+            self.reset_speaker_tracking();
+            Some(Utterance { audio, speaker })
         } else {
             None
         }
@@ -313,7 +353,7 @@ impl Vad {
 
 pub fn start_transcription(
     app: AppHandle,
-    audio_rx: mpsc::Receiver<Vec<f32>>,
+    audio_rx: mpsc::Receiver<TaggedAudio>,
     stop_flag: Arc<AtomicBool>,
     model_size: String,
     language: String,
@@ -344,34 +384,37 @@ pub fn start_transcription(
 
         let mut vad = Vad::new();
         let mut full_transcript = String::new();
-        // When "auto", detect on first utterance then lock the language
         let mut locked_language = language.clone();
         let state = app.state::<AppState>();
 
         loop {
             match audio_rx.recv_timeout(std::time::Duration::from_millis(50)) {
-                Ok(samples) => {
-                    let utterances = vad.process(&samples);
+                Ok(tagged) => {
+                    let utterances = vad.process(&tagged);
 
-                    for utterance in utterances {
-                        // If "auto", detect language on first utterance then lock it
+                    for utt in utterances {
                         if locked_language == "auto" && full_transcript.is_empty() {
-                            if let Some(detected) = detect_language(&ctx, &utterance) {
+                            if let Some(detected) = detect_language(&ctx, &utt.audio) {
                                 eprintln!("[phantom] auto-detected language: {detected}");
                                 locked_language = detected;
                             }
                         }
 
-                        if let Some(text) = transcribe_segment(&ctx, &utterance, &locked_language, &full_transcript, &vocab_seed) {
+                        if let Some(text) = transcribe_segment(&ctx, &utt.audio, &locked_language, &full_transcript, &vocab_seed) {
                             if !text.is_empty() {
+                                let label = match utt.speaker {
+                                    Speaker::User => "[You]",
+                                    Speaker::Other => "[Other]",
+                                };
+
                                 if !full_transcript.is_empty() {
-                                    full_transcript.push(' ');
+                                    full_transcript.push('\n');
                                 }
-                                full_transcript.push_str(&text);
+                                full_transcript.push_str(&format!("{label} {text}"));
 
                                 state.set_transcription_text(full_transcript.clone());
                                 let _ = app.emit("transcription-partial", full_transcript.clone());
-                                eprintln!("[phantom] transcript: {text}");
+                                eprintln!("[phantom] transcript: {label} {text}");
                             }
                         }
                     }
@@ -384,13 +427,17 @@ pub fn start_transcription(
             }
 
             if stop_flag.load(Ordering::Relaxed) {
-                if let Some(utterance) = vad.flush() {
-                    if let Some(text) = transcribe_segment(&ctx, &utterance, &locked_language, &full_transcript, &vocab_seed) {
+                if let Some(utt) = vad.flush() {
+                    if let Some(text) = transcribe_segment(&ctx, &utt.audio, &locked_language, &full_transcript, &vocab_seed) {
                         if !text.is_empty() {
+                            let label = match utt.speaker {
+                                Speaker::User => "[You]",
+                                Speaker::Other => "[Other]",
+                            };
                             if !full_transcript.is_empty() {
-                                full_transcript.push(' ');
+                                full_transcript.push('\n');
                             }
-                            full_transcript.push_str(&text);
+                            full_transcript.push_str(&format!("{label} {text}"));
                         }
                     }
                 }

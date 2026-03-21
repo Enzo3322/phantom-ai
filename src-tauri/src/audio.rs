@@ -21,9 +21,22 @@ impl AudioSource {
     }
 }
 
+/// Audio chunk tagged with its origin
+#[derive(Clone, Debug)]
+pub struct TaggedAudio {
+    pub source: Speaker,
+    pub samples: Vec<f32>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Speaker {
+    User,
+    Other,
+}
+
 pub fn start_capture(
     source: AudioSource,
-    audio_tx: mpsc::Sender<Vec<f32>>,
+    audio_tx: mpsc::Sender<TaggedAudio>,
     stop_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
     if source == AudioSource::Mic || source == AudioSource::Both {
@@ -50,7 +63,7 @@ pub fn start_capture(
 }
 
 fn run_mic_capture(
-    audio_tx: mpsc::Sender<Vec<f32>>,
+    audio_tx: mpsc::Sender<TaggedAudio>,
     stop_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
     let host = cpal::default_host();
@@ -97,7 +110,10 @@ fn run_mic_capture(
                 };
 
                 if !samples.is_empty() {
-                    let _ = audio_tx.send(samples);
+                    let _ = audio_tx.send(TaggedAudio {
+                        source: Speaker::User,
+                        samples,
+                    });
                 }
             },
             |err| eprintln!("[phantom] mic stream error: {err}"),
@@ -169,7 +185,7 @@ impl AudioResampler {
 
 #[cfg(target_os = "macos")]
 fn capture_system_audio(
-    audio_tx: mpsc::Sender<Vec<f32>>,
+    audio_tx: mpsc::Sender<TaggedAudio>,
     stop_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
     use cocoa::base::{id, nil, YES, NO};
@@ -330,7 +346,7 @@ fn capture_system_audio(
 
 #[cfg(target_os = "macos")]
 struct AudioCallbackData {
-    tx: mpsc::Sender<Vec<f32>>,
+    tx: mpsc::Sender<TaggedAudio>,
     stop_flag: Arc<AtomicBool>,
 }
 
@@ -383,7 +399,10 @@ fn register_audio_delegate() -> &'static objc::runtime::Class {
                 }
 
                 if let Some(samples) = extract_audio_samples(sample_buffer) {
-                    let _ = data.tx.send(samples);
+                    let _ = data.tx.send(TaggedAudio {
+                        source: Speaker::Other,
+                        samples,
+                    });
                 }
             }
         }
@@ -455,7 +474,7 @@ unsafe fn extract_audio_samples(sample_buffer: cocoa::base::id) -> Option<Vec<f3
 
 #[cfg(not(target_os = "macos"))]
 fn capture_system_audio(
-    _audio_tx: mpsc::Sender<Vec<f32>>,
+    _audio_tx: mpsc::Sender<TaggedAudio>,
     _stop_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
     Err("System audio capture is only supported on macOS".to_string())
