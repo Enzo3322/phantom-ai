@@ -7,6 +7,7 @@ pub struct AppState {
     pub last_response: Mutex<Option<String>>,
     pub is_processing: Mutex<bool>,
     pub opacity: Mutex<f64>,
+    pub stealth_mode: Mutex<bool>,
 }
 
 impl AppState {
@@ -34,6 +35,10 @@ impl AppState {
         *self.opacity.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    pub fn get_stealth_mode(&self) -> bool {
+        *self.stealth_mode.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     pub fn set_api_key(&self, val: String) {
         *self.api_key.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
@@ -57,6 +62,10 @@ impl AppState {
     pub fn set_opacity(&self, val: f64) {
         *self.opacity.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
+
+    pub fn set_stealth_mode(&self, val: bool) {
+        *self.stealth_mode.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
 }
 
 impl Default for AppState {
@@ -71,6 +80,7 @@ impl Default for AppState {
             last_response: Mutex::new(None),
             is_processing: Mutex::new(false),
             opacity: Mutex::new(0.85),
+            stealth_mode: Mutex::new(true),
         }
     }
 }

@@ -7,6 +7,7 @@ pub struct Config {
     pub model: String,
     pub prompt: String,
     pub opacity: f64,
+    pub stealth_mode: bool,
 }
 
 #[tauri::command]
@@ -16,6 +17,7 @@ pub fn get_config(state: tauri::State<'_, AppState>) -> Config {
         model: state.get_model(),
         prompt: state.get_prompt(),
         opacity: state.get_opacity(),
+        stealth_mode: state.get_stealth_mode(),
     }
 }
 
@@ -25,12 +27,18 @@ pub fn save_config(
     model: String,
     prompt: String,
     opacity: f64,
+    stealth_mode: bool,
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) {
     state.set_api_key(api_key);
     state.set_model(model);
     state.set_prompt(prompt);
     state.set_opacity(opacity);
+    state.set_stealth_mode(stealth_mode);
+
+    #[cfg(target_os = "macos")]
+    crate::stealth::set_stealth_for_all_windows(&app, stealth_mode);
 }
 
 #[tauri::command]

@@ -42,6 +42,7 @@ export function ConfigPanel() {
   const [model, setModel] = useState("gemini-2.0-flash");
   const [prompt, setPrompt] = useState("");
   const [opacity, setOpacity] = useState(0.85);
+  const [stealthMode, setStealthMode] = useState(true);
   const [showKey, setShowKey] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +62,7 @@ export function ConfigPanel() {
     setModel(config.model);
     setPrompt(config.prompt);
     setOpacity(config.opacity);
+    setStealthMode(config.stealth_mode);
   }, [config]);
 
   const handleOpacityChange = (val: number) => {
@@ -69,7 +71,7 @@ export function ConfigPanel() {
   };
 
   const handleSave = () => {
-    save({ api_key: apiKey, model, prompt, opacity });
+    save({ api_key: apiKey, model, prompt, opacity, stealth_mode: stealthMode });
   };
 
   const handleClose = () => {
@@ -159,6 +161,21 @@ export function ConfigPanel() {
             onChange={(e) => handleOpacityChange(Number(e.target.value))}
             className="opacity-slider"
           />
+        </div>
+
+        <div className="field">
+          <div className="stealth-row">
+            <div className="stealth-info">
+              <label>Stealth Mode</label>
+              <span className="stealth-desc">Hide window from screenshots and recordings</span>
+            </div>
+            <button
+              className={`stealth-toggle ${stealthMode ? "active" : ""}`}
+              onClick={() => setStealthMode(!stealthMode)}
+            >
+              <span className="stealth-toggle-knob" />
+            </button>
+          </div>
         </div>
 
         <div className="field">

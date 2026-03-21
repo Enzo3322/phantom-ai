@@ -27,7 +27,8 @@ pub fn create_panel(app: &tauri::AppHandle, label: &str) {
         .build();
 
     if let Ok(window) = window {
-        stealth::apply_stealth(&window);
+        let stealth_enabled = app.state::<AppState>().get_stealth_mode();
+        stealth::apply_stealth(&window, stealth_enabled);
     }
 }
 
@@ -235,6 +236,11 @@ fn load_config_from_store(app: &tauri::AppHandle) {
         if let Some(val) = store.get("opacity") {
             if let Some(n) = val.as_f64() {
                 state.set_opacity(n);
+            }
+        }
+        if let Some(val) = store.get("stealth_mode") {
+            if let Some(b) = val.as_bool() {
+                state.set_stealth_mode(b);
             }
         }
     }

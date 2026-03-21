@@ -1,15 +1,18 @@
+#![allow(unexpected_cfgs, deprecated)]
+
 use tauri::WebviewWindow;
 
 #[cfg(target_os = "macos")]
-pub fn apply_stealth(window: &WebviewWindow) {
+pub fn apply_stealth(window: &WebviewWindow, stealth_enabled: bool) {
     use cocoa::base::{id, nil};
     use objc::{msg_send, sel, sel_impl};
 
     if let Ok(ns_window) = window.ns_window() {
         let ns_window = ns_window as id;
         unsafe {
-            // Invisible to screenshots and screen recording
-            let _: () = msg_send![ns_window, setSharingType: 0u64];
+            // 0 = invisible to screenshots, 1 = normal (visible)
+            let sharing_type: u64 = if stealth_enabled { 0 } else { 1 };
+            let _: () = msg_send![ns_window, setSharingType: sharing_type];
 
             // Transparent background so CSS handles it
             let _: () = msg_send![ns_window, setBackgroundColor: cocoa::appkit::NSColor::clearColor(nil)];
@@ -35,6 +38,17 @@ pub fn apply_stealth(window: &WebviewWindow) {
                     }
                 }
             }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn set_stealth_for_all_windows(app: &tauri::AppHandle, stealth_enabled: bool) {
+    use tauri::Manager;
+
+    for label in &["config", "response"] {
+        if let Some(window) = app.get_webview_window(label) {
+            apply_stealth(&window, stealth_enabled);
         }
     }
 }

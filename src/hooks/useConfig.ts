@@ -7,6 +7,7 @@ interface Config {
   model: string;
   prompt: string;
   opacity: number;
+  stealth_mode: boolean;
 }
 
 export function useConfig() {
@@ -16,6 +17,7 @@ export function useConfig() {
     prompt:
       "Analyze this screenshot and answer any questions visible on screen. Be concise and direct.",
     opacity: 0.85,
+    stealth_mode: true,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -33,6 +35,7 @@ export function useConfig() {
           model: newConfig.model,
           prompt: newConfig.prompt,
           opacity: newConfig.opacity,
+          stealthMode: newConfig.stealth_mode,
         });
 
         const store = await load("config.json");
@@ -40,6 +43,7 @@ export function useConfig() {
         await store.set("model", newConfig.model);
         await store.set("prompt", newConfig.prompt);
         await store.set("opacity", newConfig.opacity);
+        await store.set("stealth_mode", newConfig.stealth_mode);
         await store.save();
 
         setConfig(newConfig);
