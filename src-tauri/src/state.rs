@@ -6,6 +6,7 @@ pub struct AppState {
     pub prompt: Mutex<String>,
     pub last_response: Mutex<Option<String>>,
     pub is_processing: Mutex<bool>,
+    pub glass_effect: Mutex<bool>,
 }
 
 impl AppState {
@@ -48,6 +49,14 @@ impl AppState {
     pub fn set_processing(&self, val: bool) {
         *self.is_processing.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
+
+    pub fn get_glass_effect(&self) -> bool {
+        *self.glass_effect.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn set_glass_effect(&self, val: bool) {
+        *self.glass_effect.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
 }
 
 impl Default for AppState {
@@ -61,6 +70,7 @@ impl Default for AppState {
             ),
             last_response: Mutex::new(None),
             is_processing: Mutex::new(false),
+            glass_effect: Mutex::new(true),
         }
     }
 }

@@ -6,6 +6,7 @@ pub struct Config {
     pub api_key: String,
     pub model: String,
     pub prompt: String,
+    pub glass_effect: bool,
 }
 
 #[tauri::command]
@@ -14,6 +15,7 @@ pub fn get_config(state: tauri::State<'_, AppState>) -> Config {
         api_key: state.get_api_key(),
         model: state.get_model(),
         prompt: state.get_prompt(),
+        glass_effect: state.get_glass_effect(),
     }
 }
 
@@ -22,11 +24,13 @@ pub fn save_config(
     api_key: String,
     model: String,
     prompt: String,
+    glass_effect: bool,
     state: tauri::State<'_, AppState>,
 ) {
     state.set_api_key(api_key);
     state.set_model(model);
     state.set_prompt(prompt);
+    state.set_glass_effect(glass_effect);
 }
 
 #[tauri::command]

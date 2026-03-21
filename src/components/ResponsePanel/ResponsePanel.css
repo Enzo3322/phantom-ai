@@ -6,7 +6,7 @@
 }
 
 .response-content {
-  padding: 12px 14px;
+  padding: 8px 12px;
   overflow-y: auto;
   max-height: 100%;
 }

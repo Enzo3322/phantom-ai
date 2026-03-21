@@ -1,8 +1,33 @@
-import { useState, useEffect } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { GlassContainer } from "../shared/GlassContainer";
 import { useConfig } from "../../hooks/useConfig";
 import "./ConfigPanel.css";
+
+const WIDTH = 460;
+
+const QUICK_PROMPTS = [
+  {
+    label: "Direct Answer",
+    prompt:
+      "Look at the screen and identify any question or quiz. Reply ONLY with the correct answer, nothing else. No explanation, no reasoning.",
+  },
+  {
+    label: "Answer + Explanation",
+    prompt:
+      "Look at the screen and identify any question or quiz. Reply with the correct answer followed by a brief explanation of why it is correct.",
+  },
+  {
+    label: "Step by Step",
+    prompt:
+      "Look at the screen and identify any question or quiz. Solve it step by step, showing your reasoning clearly, then state the final answer.",
+  },
+  {
+    label: "Code Help",
+    prompt:
+      "Analyze the code visible on screen. Identify any errors, answer any questions about it, or suggest improvements. Be concise.",
+  },
+];
 
 const MODELS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
@@ -17,15 +42,29 @@ export function ConfigPanel() {
   const [model, setModel] = useState("gemini-2.0-flash");
   const [prompt, setPrompt] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [glassEffect, setGlassEffect] = useState(true);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const resizeToFit = useCallback(async () => {
+    if (!panelRef.current) return;
+    await new Promise((r) => requestAnimationFrame(r));
+    const height = panelRef.current.scrollHeight;
+    await getCurrentWindow().setSize(new LogicalSize(WIDTH, height));
+  }, []);
+
+  useEffect(() => {
+    resizeToFit();
+  }, [resizeToFit]);
 
   useEffect(() => {
     setApiKey(config.api_key);
     setModel(config.model);
     setPrompt(config.prompt);
+    setGlassEffect(config.glass_effect);
   }, [config]);
 
   const handleSave = () => {
-    save({ api_key: apiKey, model, prompt });
+    save({ api_key: apiKey, model, prompt, glass_effect: glassEffect });
   };
 
   const handleClose = () => {
@@ -33,7 +72,7 @@ export function ConfigPanel() {
   };
 
   return (
-    <GlassContainer>
+    <GlassContainer ref={panelRef}>
       <div className="titlebar" data-tauri-drag-region>
         <span className="titlebar-title">Phantom Settings</span>
         <button className="close-btn" onClick={handleClose}>
@@ -81,13 +120,38 @@ export function ConfigPanel() {
 
         <div className="field">
           <label>Prompt</label>
+          <div className="quick-prompts">
+            {QUICK_PROMPTS.map((qp) => (
+              <button
+                key={qp.label}
+                className={`quick-prompt-btn ${prompt === qp.prompt ? "active" : ""}`}
+                onClick={() => setPrompt(qp.prompt)}
+              >
+                {qp.label}
+              </button>
+            ))}
+          </div>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            rows={4}
+            rows={3}
             placeholder="Instructions sent with each screenshot"
             spellCheck={false}
           />
+        </div>
+
+        <div className="field">
+          <label>Appearance</label>
+          <div className="toggle-row">
+            <span className="toggle-label">Glass Effect</span>
+            <button
+              className={`toggle-switch ${glassEffect ? "active" : ""}`}
+              onClick={() => setGlassEffect(!glassEffect)}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+          <span className="field-hint">Restart app after changing</span>
         </div>
 
         <div className="field">

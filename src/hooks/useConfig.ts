@@ -6,6 +6,7 @@ interface Config {
   api_key: string;
   model: string;
   prompt: string;
+  glass_effect: boolean;
 }
 
 export function useConfig() {
@@ -14,6 +15,7 @@ export function useConfig() {
     model: "gemini-2.0-flash",
     prompt:
       "Analyze this screenshot and answer any questions visible on screen. Be concise and direct.",
+    glass_effect: true,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -30,12 +32,14 @@ export function useConfig() {
           apiKey: newConfig.api_key,
           model: newConfig.model,
           prompt: newConfig.prompt,
+          glassEffect: newConfig.glass_effect,
         });
 
         const store = await load("config.json");
         await store.set("api_key", newConfig.api_key);
         await store.set("model", newConfig.model);
         await store.set("prompt", newConfig.prompt);
+        await store.set("glass_effect", newConfig.glass_effect);
         await store.save();
 
         setConfig(newConfig);

@@ -6,10 +6,9 @@ import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { useGemini } from "../../hooks/useGemini";
 import "./ResponsePanel.css";
 
-const MIN_HEIGHT = 80;
+const MIN_HEIGHT = 48;
 const MAX_HEIGHT = 600;
 const WIDTH = 380;
-const PADDING_V = 24;
 const MARGIN = 16;
 
 export function ResponsePanel() {
@@ -24,7 +23,7 @@ export function ResponsePanel() {
 
     const contentHeight = contentRef.current.scrollHeight;
     const totalHeight = Math.min(
-      Math.max(contentHeight + PADDING_V, MIN_HEIGHT),
+      Math.max(contentHeight, MIN_HEIGHT),
       MAX_HEIGHT
     );
 

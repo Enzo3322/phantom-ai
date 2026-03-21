@@ -29,8 +29,11 @@ fn create_panel(app: &tauri::AppHandle, label: &str) {
     if let Ok(window) = window {
         #[cfg(target_os = "macos")]
         {
-            use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
-            let _ = apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, Some(14.0));
+            let glass = app.state::<AppState>().get_glass_effect();
+            if glass {
+                use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+                let _ = apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, Some(14.0));
+            }
         }
 
         stealth::apply_stealth(&window);
@@ -239,6 +242,11 @@ fn load_config_from_store(app: &tauri::AppHandle) {
         if let Some(val) = store.get("prompt") {
             if let Some(s) = val.as_str() {
                 state.set_prompt(s.to_string());
+            }
+        }
+        if let Some(val) = store.get("glass_effect") {
+            if let Some(b) = val.as_bool() {
+                state.set_glass_effect(b);
             }
         }
     }
