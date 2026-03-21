@@ -1,0 +1,21 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for Phantom",
+  "windows": ["config", "response"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-create",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-start-dragging",
+    "global-shortcut:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "store:default",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-write-text"
+  ]
+}
