@@ -12,8 +12,6 @@ export function GlassContainer({ children }: GlassContainerProps) {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderRadius: "var(--radius-xl)",
-        border: "1px solid var(--border-glass)",
         overflow: "hidden",
       }}
     >

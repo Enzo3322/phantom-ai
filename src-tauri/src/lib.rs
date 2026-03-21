@@ -11,7 +11,7 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, ShortcutS
 fn create_panel(app: &tauri::AppHandle, label: &str) {
     let (width, height) = match label {
         "config" => (460.0, 520.0),
-        "response" => (500.0, 600.0),
+        "response" => (380.0, 420.0),
         _ => (400.0, 400.0),
     };
 
@@ -31,7 +31,7 @@ fn create_panel(app: &tauri::AppHandle, label: &str) {
         #[cfg(target_os = "macos")]
         {
             use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
-            let _ = apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, None);
+            let _ = apply_vibrancy(&window, NSVisualEffectMaterial::HudWindow, None, Some(14.0));
         }
 
         stealth::apply_stealth(&window);
@@ -76,6 +76,12 @@ async fn handle_capture(app: tauri::AppHandle) {
 
     let model = state.model.lock().unwrap().clone();
     let prompt = state.prompt.lock().unwrap().clone();
+
+    if !capture::check_screen_permission() {
+        let _ = app.emit("capture-error", "Screen recording permission required. Open System Settings > Privacy & Security > Screen Recording and grant access to Phantom.");
+        toggle_window(&app, "response");
+        return;
+    }
 
     *state.is_processing.lock().unwrap() = true;
     let _ = app.emit("processing-start", ());

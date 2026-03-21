@@ -89,15 +89,21 @@ pub async fn analyze_screenshot(
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let status = response.status();
+    if !response.status().is_success() {
+        let status = response.status();
+        let raw_body = response.text().await.unwrap_or_default();
+        if let Ok(parsed) = serde_json::from_str::<GeminiResponse>(&raw_body) {
+            if let Some(error) = parsed.error {
+                return Err(format!("Gemini API error ({}): {}", status, error.message));
+            }
+        }
+        return Err(format!("Gemini API error ({}): {}", status, raw_body));
+    }
+
     let body: GeminiResponse = response
         .json()
         .await
         .map_err(|e| format!("Failed to parse response: {e}"))?;
-
-    if let Some(error) = body.error {
-        return Err(format!("Gemini API error ({}): {}", status, error.message));
-    }
 
     body.candidates
         .and_then(|c| c.into_iter().next())
