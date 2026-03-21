@@ -1,7 +1,7 @@
 {
   "identifier": "default",
   "description": "Default capabilities for Phantom",
-  "windows": ["config", "response"],
+  "windows": ["config", "response", "transcription"],
   "permissions": [
     "core:default",
     "core:window:default",

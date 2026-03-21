@@ -35,6 +35,37 @@
   color: #ff3b30;
 }
 
+.tab-bar {
+  display: flex;
+  padding: 0 16px;
+  gap: 2px;
+  border-bottom: 1px solid var(--border-glass);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-tertiary);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 0;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.tab-btn:hover {
+  color: var(--text-secondary);
+}
+
+.tab-btn.active {
+  color: var(--text-accent);
+  border-bottom-color: var(--text-accent);
+}
+
 .config-content {
   padding: 20px;
   display: flex;
@@ -276,6 +307,15 @@ kbd {
 
 .stealth-toggle.active .stealth-toggle-knob {
   transform: translateX(18px);
+}
+
+.whisper-model-row {
+  display: flex;
+  gap: 8px;
+}
+
+.whisper-model-row select {
+  flex: 1;
 }
 
 .save-btn {

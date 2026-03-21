@@ -8,6 +8,13 @@ pub struct AppState {
     pub is_processing: Mutex<bool>,
     pub opacity: Mutex<f64>,
     pub stealth_mode: Mutex<bool>,
+    pub is_recording: Mutex<bool>,
+    pub transcription_text: Mutex<String>,
+    pub whisper_model_size: Mutex<String>,
+    pub whisper_language: Mutex<String>,
+    pub audio_source: Mutex<String>,
+    pub vocab_seed: Mutex<String>,
+    pub recording_stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
 }
 
 impl AppState {
@@ -39,6 +46,30 @@ impl AppState {
         *self.stealth_mode.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    pub fn get_recording(&self) -> bool {
+        *self.is_recording.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn get_transcription_text(&self) -> String {
+        self.transcription_text.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn get_whisper_model_size(&self) -> String {
+        self.whisper_model_size.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn get_whisper_language(&self) -> String {
+        self.whisper_language.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn get_audio_source(&self) -> String {
+        self.audio_source.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn get_vocab_seed(&self) -> String {
+        self.vocab_seed.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
     pub fn set_api_key(&self, val: String) {
         *self.api_key.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
@@ -66,6 +97,30 @@ impl AppState {
     pub fn set_stealth_mode(&self, val: bool) {
         *self.stealth_mode.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
+
+    pub fn set_recording(&self, val: bool) {
+        *self.is_recording.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn set_transcription_text(&self, val: String) {
+        *self.transcription_text.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn set_whisper_model_size(&self, val: String) {
+        *self.whisper_model_size.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn set_whisper_language(&self, val: String) {
+        *self.whisper_language.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn set_audio_source(&self, val: String) {
+        *self.audio_source.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn set_vocab_seed(&self, val: String) {
+        *self.vocab_seed.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
 }
 
 impl Default for AppState {
@@ -81,6 +136,13 @@ impl Default for AppState {
             is_processing: Mutex::new(false),
             opacity: Mutex::new(0.85),
             stealth_mode: Mutex::new(true),
+            is_recording: Mutex::new(false),
+            transcription_text: Mutex::new(String::new()),
+            whisper_model_size: Mutex::new("small".to_string()),
+            whisper_language: Mutex::new("auto".to_string()),
+            audio_source: Mutex::new("both".to_string()),
+            vocab_seed: Mutex::new(String::new()),
+            recording_stop_tx: Mutex::new(None),
         }
     }
 }

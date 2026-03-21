@@ -46,7 +46,7 @@ pub fn apply_stealth(window: &WebviewWindow, stealth_enabled: bool) {
 pub fn set_stealth_for_all_windows(app: &tauri::AppHandle, stealth_enabled: bool) {
     use tauri::Manager;
 
-    for label in &["config", "response"] {
+    for label in &["config", "response", "transcription"] {
         if let Some(window) = app.get_webview_window(label) {
             apply_stealth(&window, stealth_enabled);
         }

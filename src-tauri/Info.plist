@@ -5,6 +5,8 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSScreenCaptureUsageDescription</key>
-    <string>Phantom needs screen recording permission to capture screenshots for AI analysis.</string>
+    <string>Phantom needs screen recording permission to capture screenshots and system audio for AI analysis.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Phantom needs microphone access for real-time audio transcription.</string>
 </dict>
 </plist>

@@ -8,6 +8,10 @@ interface Config {
   prompt: string;
   opacity: number;
   stealth_mode: boolean;
+  whisper_model_size: string;
+  whisper_language: string;
+  audio_source: string;
+  vocab_seed: string;
 }
 
 export function useConfig() {
@@ -18,6 +22,10 @@ export function useConfig() {
       "Analyze this screenshot and answer any questions visible on screen. Be concise and direct.",
     opacity: 0.85,
     stealth_mode: true,
+    whisper_model_size: "small",
+    whisper_language: "auto",
+    audio_source: "both",
+    vocab_seed: "",
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -36,6 +44,10 @@ export function useConfig() {
           prompt: newConfig.prompt,
           opacity: newConfig.opacity,
           stealthMode: newConfig.stealth_mode,
+          whisperModelSize: newConfig.whisper_model_size,
+          whisperLanguage: newConfig.whisper_language,
+          audioSource: newConfig.audio_source,
+          vocabSeed: newConfig.vocab_seed,
         });
 
         const store = await load("config.json");
@@ -44,6 +56,10 @@ export function useConfig() {
         await store.set("prompt", newConfig.prompt);
         await store.set("opacity", newConfig.opacity);
         await store.set("stealth_mode", newConfig.stealth_mode);
+        await store.set("whisper_model_size", newConfig.whisper_model_size);
+        await store.set("whisper_language", newConfig.whisper_language);
+        await store.set("audio_source", newConfig.audio_source);
+        await store.set("vocab_seed", newConfig.vocab_seed);
         await store.save();
 
         setConfig(newConfig);
