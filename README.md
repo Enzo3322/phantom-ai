@@ -1,8 +1,8 @@
-# SmartHint
+Phantom
 
 A stealthy, AI-powered screenshot analysis tool for macOS. Capture your screen with a shortcut, get instant AI responses powered by Google Gemini — all in a floating overlay invisible to screen capture.
 
-![SmartHint Demo](./assets/screenshots/demo.gif)
+![Phantom Demo](./assets/screenshots/demo.gif)
 
 ## Features
 
@@ -60,8 +60,8 @@ The floating response window that appears in the top-right corner with the AI an
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/smarthint.git
-cd smarthint
+git clone https://github.com/Enzo3322/phantom.git
+cd phantom
 ```
 
 ### 2. Install dependencies
@@ -86,7 +86,7 @@ The built `.dmg` will be in `src-tauri/target/release/bundle/dmg/`.
 
 ## Usage
 
-1. Launch SmartHint — it runs silently with no dock icon
+1. Launch Phantom — it runs silently with no dock icon
 2. Press `⌘ ⇧ C` to open the config panel
 3. Enter your Gemini API key
 4. Select a model and quick action (or write a custom prompt)
@@ -112,7 +112,7 @@ The built `.dmg` will be in `src-tauri/target/release/bundle/dmg/`.
 ## Project Structure
 
 ```
-smarthint/
+phantom/
 ├── src/                        # React frontend
 │   ├── components/
 │   │   ├── ConfigPanel/        # Settings UI (API key, model, prompts)
@@ -155,7 +155,7 @@ smarthint/
 
 ## Permissions
 
-SmartHint requires the following macOS permissions:
+Phantom requires the following macOS permissions:
 
 - **Screen Recording** — Required to capture screenshots. macOS will prompt you on first use.
 
