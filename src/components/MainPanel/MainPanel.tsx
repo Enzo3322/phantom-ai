@@ -17,7 +17,7 @@ const WIDTH = 380;
 const MIN_RESPONSE_HEIGHT = 120;
 const TITLEBAR_HEIGHT = 40;
 const PADDING = 24;
-const MARGIN = 16;
+const MARGIN = 0;
 
 type Mode = "idle" | "response" | "recording" | "processing" | "error";
 
