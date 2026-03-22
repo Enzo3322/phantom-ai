@@ -216,3 +216,61 @@ pub async fn send_to_gemini(
         .map(|p| p.text)
         .ok_or_else(|| "Empty response from Gemini".to_string())
 }
+
+pub async fn send_text_prompt(
+    api_key: &str,
+    model: &str,
+    prompt: &str,
+    spoof_ua: bool,
+    jitter: bool,
+    proxy_url: Option<&str>,
+) -> Result<String, String> {
+    if jitter {
+        network_stealth::apply_jitter().await;
+    }
+
+    let client = if spoof_ua {
+        network_stealth::build_stealth_client(proxy_url)?
+    } else {
+        reqwest::Client::new()
+    };
+
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+        model, api_key
+    );
+
+    let request = GeminiRequest {
+        contents: vec![Content {
+            parts: vec![Part::Text {
+                text: prompt.to_string(),
+            }],
+        }],
+    };
+
+    let response = client
+        .post(&url)
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let status = response.status();
+    let raw = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {e}"))?;
+
+    if !status.is_success() {
+        return Err(format!("Gemini API error ({}): {}", status, &raw[..raw.len().min(300)]));
+    }
+
+    let body: GeminiResponse = serde_json::from_str(&raw)
+        .map_err(|e| format!("Failed to parse response: {e}"))?;
+
+    body.candidates
+        .and_then(|c| c.into_iter().next())
+        .and_then(|c| c.content.parts.into_iter().next())
+        .map(|p| p.text)
+        .ok_or_else(|| "Empty response from Gemini".to_string())
+}
