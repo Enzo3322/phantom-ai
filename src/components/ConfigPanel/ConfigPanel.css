@@ -407,3 +407,59 @@ kbd {
   flex: 1;
 }
 
+.usage-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.usage-table {
+  font-size: 11px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.usage-header,
+.usage-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 0.8fr 0.8fr 0.8fr;
+  padding: 6px 10px;
+  gap: 4px;
+}
+
+.usage-header {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.usage-row {
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.usage-row:last-child {
+  border-bottom: none;
+}
+
+.usage-feature {
+  text-transform: capitalize;
+}
+
+.usage-model {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+}
+
+.usage-total {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+

@@ -1,9 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { GlassContainer } from "../shared/GlassContainer";
 import { useConfig } from "../../hooks/useConfig";
 import { useWhisperModel } from "../../hooks/useWhisperModel";
 import "./ConfigPanel.css";
+
+interface UsageSummary {
+  feature: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+}
 
 const WIDTH = 460;
 
@@ -99,13 +107,14 @@ const VOCAB_PRESETS = [
   },
 ];
 
-type Tab = "general" | "audio" | "stealth" | "shortcuts";
+type Tab = "general" | "audio" | "stealth" | "shortcuts" | "usage";
 
 export function ConfigPanel() {
   const { config, updateConfig, autoSaved } = useConfig();
   const { models, downloading, downloadModel } = useWhisperModel();
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const [showKey, setShowKey] = useState(false);
+  const [usageData, setUsageData] = useState<UsageSummary[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const resizeToFit = useCallback(async () => {
@@ -119,6 +128,12 @@ export function ConfigPanel() {
   useEffect(() => {
     resizeToFit();
   }, [resizeToFit, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "usage") {
+      invoke<UsageSummary[]>("get_token_usage").then(setUsageData);
+    }
+  }, [activeTab]);
 
   const handleClose = () => {
     getCurrentWindow().hide();
@@ -225,6 +240,17 @@ export function ConfigPanel() {
             <line x1="8" y1="16" x2="16" y2="16" />
           </svg>
           Shortcuts
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "usage" ? "active" : ""}`}
+          onClick={() => setActiveTab("usage")}
+        >
+          <svg className="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          Usage
         </button>
       </div>
 
@@ -635,6 +661,50 @@ export function ConfigPanel() {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === "usage" && (
+          <>
+            <div className="field">
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+                Token Usage by Feature
+              </label>
+              {usageData.length === 0 ? (
+                <div className="usage-empty">No usage data yet</div>
+              ) : (
+                <div className="usage-table">
+                  <div className="usage-header">
+                    <span>Feature</span>
+                    <span>Model</span>
+                    <span>Input</span>
+                    <span>Output</span>
+                    <span>Total</span>
+                  </div>
+                  {usageData.map((row, i) => (
+                    <div key={i} className="usage-row">
+                      <span className="usage-feature">{row.feature}</span>
+                      <span className="usage-model">{row.model.replace("gemini-", "")}</span>
+                      <span>{row.input_tokens.toLocaleString()}</span>
+                      <span>{row.output_tokens.toLocaleString()}</span>
+                      <span>{(row.input_tokens + row.output_tokens).toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="usage-row usage-total">
+                    <span>Total</span>
+                    <span></span>
+                    <span>{usageData.reduce((s, r) => s + r.input_tokens, 0).toLocaleString()}</span>
+                    <span>{usageData.reduce((s, r) => s + r.output_tokens, 0).toLocaleString()}</span>
+                    <span>{usageData.reduce((s, r) => s + r.input_tokens + r.output_tokens, 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </GlassContainer>
