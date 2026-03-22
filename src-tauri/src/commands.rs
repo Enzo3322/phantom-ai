@@ -264,3 +264,17 @@ pub async fn type_text(text: String, humanized: bool) -> Result<(), String> {
 pub fn ephemeral_paste(text: String) {
     crate::clipboard_stealth::ephemeral_paste(&text);
 }
+
+#[tauri::command]
+pub fn get_watcher_status(state: tauri::State<'_, AppState>) -> bool {
+    state.get_watcher_active()
+}
+
+#[tauri::command]
+pub fn toggle_watcher(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+    if state.get_watcher_active() {
+        crate::watcher::stop_watcher(&app);
+    } else {
+        crate::watcher::start_watcher(app);
+    }
+}
