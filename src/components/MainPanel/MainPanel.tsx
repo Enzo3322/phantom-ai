@@ -12,7 +12,6 @@ import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { useGemini } from "../../hooks/useGemini";
 import { useRecording } from "../../hooks/useRecording";
 import { useTranscript } from "../../hooks/useTranscript";
-import { useWatcher } from "../../hooks/useWatcher";
 import "./MainPanel.css";
 
 const WIDTH = 380;
@@ -21,7 +20,7 @@ const TITLEBAR_HEIGHT = 40;
 const PADDING = 24;
 const MARGIN = 0;
 
-type Mode = "idle" | "response" | "recording" | "processing" | "error" | "watching";
+type Mode = "idle" | "response" | "recording" | "processing" | "error";
 
 export function MainPanel() {
   const { response, loading: geminiLoading, error: geminiError, source: geminiSource, model, clearResponse } = useGemini();
@@ -33,8 +32,6 @@ export function MainPanel() {
     error: transcriptionError,
     clearTranscript,
   } = useTranscript();
-  const { active: watcherActive, stage: watcherStage, stageLabel: watcherStageLabel } = useWatcher();
-
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const sideRef = useRef<"right" | "left">("right");
@@ -51,7 +48,6 @@ export function MainPanel() {
     if (isRecording) return "recording";
     if (response) return "response";
     if (geminiLoading) return "processing";
-    if (watcherActive) return "watching";
     return "idle";
   })();
 
@@ -161,57 +157,6 @@ export function MainPanel() {
     clearTranscript();
     clearResponse();
   };
-
-  // --- WATCHING (watcher active, no response yet) ---
-  if (mode === "watching") {
-    const isProcessing = watcherStage !== "idle";
-    return (
-      <div className="main-panel">
-        <div className="main-titlebar" data-tauri-drag-region>
-          <div className="main-title-left">
-            <span className={isProcessing ? "watcher-dot processing" : "watcher-dot"} />
-            <span className="main-title">{watcherStageLabel}</span>
-          </div>
-        </div>
-        <div className="main-body main-processing-body">
-          <div className="brain-loading">
-            {isProcessing ? (
-              <svg
-                className="brain-loading-icon"
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9.5 2a3.5 3.5 0 0 0-3.4 4.4A3.5 3.5 0 0 0 4 10a3.5 3.5 0 0 0 1.8 3.1A3.5 3.5 0 0 0 7 17a3.5 3.5 0 0 0 3.5 3.5c.8 0 1.5-.2 2.1-.6" />
-                <path d="M14.5 2a3.5 3.5 0 0 1 3.4 4.4A3.5 3.5 0 0 1 20 10a3.5 3.5 0 0 1-1.8 3.1A3.5 3.5 0 0 1 17 17a3.5 3.5 0 0 1-3.5 3.5c-.8 0-1.5-.2-2.1-.6" />
-                <path d="M12 2v20" />
-              </svg>
-            ) : (
-              <svg
-                className="watcher-eye-icon"
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // --- IDLE (window is hidden) ---
   if (mode === "idle") {

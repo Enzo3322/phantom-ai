@@ -269,20 +269,6 @@ pub fn ephemeral_paste(text: String) {
 }
 
 #[tauri::command]
-pub fn get_watcher_status(state: tauri::State<'_, AppState>) -> bool {
-    state.get_watcher_active()
-}
-
-#[tauri::command]
-pub fn toggle_watcher(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
-    if state.get_watcher_active() {
-        crate::watcher::stop_watcher(&app);
-    } else {
-        crate::watcher::start_watcher(app);
-    }
-}
-
-#[tauri::command]
 pub fn get_token_usage(state: tauri::State<'_, AppState>) -> Vec<crate::usage_db::UsageSummary> {
     match state.get_usage_db_path() {
         Some(path) => crate::usage_db::get_usage_summary(&path),

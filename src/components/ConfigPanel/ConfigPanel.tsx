@@ -644,21 +644,6 @@ export function ConfigPanel() {
                 <kbd>⌘ ⇧ C</kbd>
               </div>
 
-              <div className="shortcut-row">
-                <div className="shortcut-left">
-                  <span className="shortcut-icon watcher">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </span>
-                  <div className="shortcut-info">
-                    <span className="shortcut-name">Toggle Watcher</span>
-                    <span className="shortcut-desc">Start or stop continuous screen OCR</span>
-                  </div>
-                </div>
-                <kbd>⌘ ⇧ O</kbd>
-              </div>
             </div>
           </div>
         )}

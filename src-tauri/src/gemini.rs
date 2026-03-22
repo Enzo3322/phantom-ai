@@ -199,15 +199,3 @@ pub async fn send_to_gemini(
     call_gemini(api_key, model, parts, spoof_ua, jitter, proxy_url).await
 }
 
-pub async fn send_text_prompt(
-    api_key: &str,
-    model: &str,
-    prompt: &str,
-    spoof_ua: bool,
-    jitter: bool,
-    proxy_url: Option<&str>,
-) -> Result<(String, TokenUsage), String> {
-    let parts = vec![Part::Text { text: prompt.to_string() }];
-
-    call_gemini(api_key, model, parts, spoof_ua, jitter, proxy_url).await
-}
