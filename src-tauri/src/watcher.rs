@@ -372,7 +372,13 @@ pub fn start_watcher(app: tauri::AppHandle) {
             .await;
 
             let filtered_text = match flash_result {
-                Ok(text) => text,
+                Ok((text, usage)) => {
+                    let state = app.state::<AppState>();
+                    if let Some(db_path) = state.get_usage_db_path() {
+                        crate::usage_db::record_usage(&db_path, "watcher", FLASH_MODEL, usage.input_tokens, usage.output_tokens);
+                    }
+                    text
+                }
                 Err(e) => {
                     eprintln!("[phantom] watcher: Flash API error: {e}");
                     let _ = app.emit(
@@ -429,12 +435,15 @@ pub fn start_watcher(app: tauri::AppHandle) {
             .await;
 
             match pro_result {
-                Ok(response) => {
+                Ok((response, usage)) => {
                     eprintln!(
                         "[phantom] watcher: Pro returned {} chars",
                         response.len()
                     );
                     let state = app.state::<AppState>();
+                    if let Some(db_path) = state.get_usage_db_path() {
+                        crate::usage_db::record_usage(&db_path, "watcher", PRO_MODEL, usage.input_tokens, usage.output_tokens);
+                    }
                     state.set_last_response(Some(response.clone()));
                     let _ = app.emit(
                         "capture-response",

@@ -201,9 +201,12 @@ pub async fn send_transcription_to_gemini(
     let proxy_ref = if proxy.is_empty() { None } else { Some(proxy.as_str()) };
 
     match crate::gemini::send_to_gemini(&api_key, &model, &text, &prompt, &response_language, spoof_ua, jitter, proxy_ref).await {
-        Ok(response) => {
+        Ok((response, usage)) => {
             state.set_last_response(Some(response.clone()));
             let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "transcription" }));
+            if let Some(db_path) = state.get_usage_db_path() {
+                crate::usage_db::record_usage(&db_path, "transcription", &model, usage.input_tokens, usage.output_tokens);
+            }
             Ok(())
         }
         Err(e) => {
