@@ -215,6 +215,8 @@ pub fn run() {
                         });
                     } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyC) {
                         toggle_window(app, "config");
+                    } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyA) {
+                        toggle_window(app, "main");
                     } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyM) {
                         let handle = app.clone();
                         tauri::async_runtime::spawn(async move {
@@ -251,6 +253,7 @@ pub fn run() {
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyS),
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyC),
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyM),
+                (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyA),
             ];
 
             for (modifiers, code) in &shortcuts {
