@@ -2,12 +2,12 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use std::process::Command;
 
 pub fn capture_screen() -> Result<String, String> {
-    let tmp_path = std::env::temp_dir().join("phantom_capture.png");
+    let tmp_path = std::env::temp_dir().join("phantom_capture.jpg");
     let tmp_str = tmp_path.to_string_lossy().to_string();
 
-    // Use macOS native screencapture tool — stable and doesn't crash
+    // Capture as JPEG for smaller payload (text remains legible)
     let output = Command::new("screencapture")
-        .args(["-x", "-C", "-t", "png", &tmp_str])
+        .args(["-x", "-C", "-t", "jpg", &tmp_str])
         .output()
         .map_err(|e| format!("Failed to run screencapture: {e}"))?;
 
@@ -15,6 +15,11 @@ pub fn capture_screen() -> Result<String, String> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("screencapture failed: {stderr}"));
     }
+
+    // Downscale to 50% with sips — keeps text legible, halves dimensions
+    let _ = Command::new("sips")
+        .args(["--resampleHeightWidthMax", "1440", "-s", "formatOptions", "60", &tmp_str])
+        .output();
 
     let bytes =
         std::fs::read(&tmp_path).map_err(|e| format!("Failed to read screenshot file: {e}"))?;
@@ -24,6 +29,8 @@ pub fn capture_screen() -> Result<String, String> {
     if bytes.is_empty() {
         return Err("Screenshot is empty. Check screen recording permission.".to_string());
     }
+
+    eprintln!("[phantom] capture: image size {}KB", bytes.len() / 1024);
 
     Ok(STANDARD.encode(bytes))
 }

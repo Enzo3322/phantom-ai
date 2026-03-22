@@ -80,7 +80,7 @@ pub async fn analyze_screenshot(
             parts: vec![
                 Part::InlineData {
                     inline_data: InlineData {
-                        mime_type: "image/png".to_string(),
+                        mime_type: "image/jpeg".to_string(),
                         data: base64_image.to_string(),
                     },
                 },
