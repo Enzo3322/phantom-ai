@@ -13,6 +13,14 @@ interface UsageSummary {
   output_tokens: number;
 }
 
+interface ResponseEntry {
+  id: number;
+  timestamp: string;
+  source: string;
+  model: string;
+  response: string;
+}
+
 const WIDTH = 460;
 
 const QUICK_PROMPTS = [
@@ -107,7 +115,7 @@ const VOCAB_PRESETS = [
   },
 ];
 
-type Tab = "general" | "audio" | "stealth" | "shortcuts" | "usage";
+type Tab = "general" | "audio" | "stealth" | "shortcuts" | "usage" | "history";
 
 export function ConfigPanel() {
   const { config, updateConfig, autoSaved } = useConfig();
@@ -115,6 +123,7 @@ export function ConfigPanel() {
   const [activeTab, setActiveTab] = useState<Tab>("general");
   const [showKey, setShowKey] = useState(false);
   const [usageData, setUsageData] = useState<UsageSummary[]>([]);
+  const [historyData, setHistoryData] = useState<ResponseEntry[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const resizeToFit = useCallback(async () => {
@@ -132,6 +141,9 @@ export function ConfigPanel() {
   useEffect(() => {
     if (activeTab === "usage") {
       invoke<UsageSummary[]>("get_token_usage").then(setUsageData);
+    }
+    if (activeTab === "history") {
+      invoke<ResponseEntry[]>("get_response_history").then(setHistoryData);
     }
   }, [activeTab]);
 
@@ -251,6 +263,16 @@ export function ConfigPanel() {
             <line x1="6" y1="20" x2="6" y2="14" />
           </svg>
           Usage
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
+          onClick={() => setActiveTab("history")}
+        >
+          <svg className="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          History
         </button>
       </div>
 
@@ -686,6 +708,40 @@ export function ConfigPanel() {
                     <span>{usageData.reduce((s, r) => s + r.output_tokens, 0).toLocaleString()}</span>
                     <span>{usageData.reduce((s, r) => s + r.input_tokens + r.output_tokens, 0).toLocaleString()}</span>
                   </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === "history" && (
+          <>
+            <div className="field">
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Response History
+              </label>
+              {historyData.length === 0 ? (
+                <div className="history-empty">No responses yet</div>
+              ) : (
+                <div className="history-list">
+                  {[...historyData].reverse().map((entry) => (
+                    <div key={entry.id} className="history-entry">
+                      <div className="history-entry-header">
+                        <span className="history-source-badge">{entry.source}</span>
+                        <span className="history-model">{entry.model.replace("gemini-", "")}</span>
+                        <span className="history-timestamp">{new Date(entry.timestamp + "Z").toLocaleString()}</span>
+                      </div>
+                      <div className="history-entry-text">
+                        {entry.response.length > 120
+                          ? entry.response.slice(0, 120) + "..."
+                          : entry.response}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
