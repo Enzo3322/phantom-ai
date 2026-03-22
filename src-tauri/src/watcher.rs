@@ -224,6 +224,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
     let state = app.state::<AppState>();
     state.set_watcher_active(true);
     state.set_watcher_interval_ms(DEFAULT_INTERVAL_MS);
+    state.clear_watcher_context();
 
     let _ = app.emit("watcher-started", ());
 
@@ -417,11 +418,20 @@ pub fn start_watcher(app: tauri::AppHandle) {
                 lang => format!("\n\nIMPORTANT: You MUST respond in {lang}."),
             };
 
+            let previous_context = state.get_watcher_context();
+            let context_section = if previous_context.is_empty() {
+                String::new()
+            } else {
+                let history = previous_context.iter().enumerate()
+                    .map(|(i, r)| format!("--- Previous response {} ---\n{}", i + 1, r))
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
+                format!("\n\nPrevious context for continuity:\n{history}\n")
+            };
+
+            let user_prompt = state.get_prompt();
             let pro_prompt = format!(
-                "Based on the following structured screen content, provide a helpful, concise response. \
-                If there are questions visible, answer them. If there is code, explain or help with it. \
-                Be direct and actionable.{lang_instruction}\n\n\
-                Content:\n{filtered_text}"
+                "{user_prompt}{lang_instruction}{context_section}\n\nCurrent screen content:\n{filtered_text}"
             );
 
             let pro_result = crate::gemini::send_text_prompt(
@@ -444,6 +454,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
                     if let Some(db_path) = state.get_usage_db_path() {
                         crate::usage_db::record_usage(&db_path, "watcher", PRO_MODEL, usage.input_tokens, usage.output_tokens);
                     }
+                    state.push_watcher_context(response.clone());
                     state.set_last_response(Some(response.clone()));
                     let _ = app.emit(
                         "capture-response",

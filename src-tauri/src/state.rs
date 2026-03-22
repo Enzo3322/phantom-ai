@@ -31,6 +31,8 @@ pub struct AppState {
     pub watcher_active: Mutex<bool>,
     pub watcher_interval_ms: Mutex<u64>,
     pub last_ocr_text: Mutex<String>,
+    // Watcher context history
+    pub watcher_context: Mutex<Vec<String>>,
     // Token usage tracking
     pub usage_db_path: Mutex<Option<String>>,
 }
@@ -232,6 +234,23 @@ impl AppState {
         *self.last_ocr_text.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
 
+    pub fn get_watcher_context(&self) -> Vec<String> {
+        self.watcher_context.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn push_watcher_context(&self, val: String) {
+        let mut ctx = self.watcher_context.lock().unwrap_or_else(|e| e.into_inner());
+        ctx.push(val);
+        // Keep only the last 3 entries
+        while ctx.len() > 3 {
+            ctx.remove(0);
+        }
+    }
+
+    pub fn clear_watcher_context(&self) {
+        self.watcher_context.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    }
+
     pub fn get_usage_db_path(&self) -> Option<String> {
         self.usage_db_path.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
@@ -272,6 +291,7 @@ impl Default for AppState {
             watcher_active: Mutex::new(false),
             watcher_interval_ms: Mutex::new(3000),
             last_ocr_text: Mutex::new(String::new()),
+            watcher_context: Mutex::new(Vec::new()),
             usage_db_path: Mutex::new(None),
         }
     }
