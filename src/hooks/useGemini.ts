@@ -42,33 +42,53 @@ export function useGemini() {
   }, []);
 
   useEffect(() => {
-    const listeners = [
-      listen<string>("processing-start", () => {
-        setLoading(true);
-        setError(null);
-      }),
-      listen<CaptureResponsePayload>("capture-response", (event) => {
-        setLoading(false);
-        setError(null);
-        const entry: HistoryEntry = {
-          text: event.payload.text,
-          source: event.payload.source,
-          model: event.payload.model ?? null,
-        };
-        setHistory((prev) => {
-          const next = [...prev, entry];
-          setCurrentIndex(next.length - 1);
-          return next;
-        });
-      }),
-      listen<string>("capture-error", (event) => {
-        setLoading(false);
-        setError(event.payload);
-      }),
-    ];
+    let cancelled = false;
+    const unlisteners: Array<() => void> = [];
+
+    async function setup() {
+      const u1 = await listen<string>("processing-start", () => {
+        if (!cancelled) {
+          setLoading(true);
+          setError(null);
+        }
+      });
+      if (cancelled) { u1(); return; }
+      unlisteners.push(u1);
+
+      const u2 = await listen<CaptureResponsePayload>("capture-response", (event) => {
+        if (!cancelled) {
+          setLoading(false);
+          setError(null);
+          const entry: HistoryEntry = {
+            text: event.payload.text,
+            source: event.payload.source,
+            model: event.payload.model ?? null,
+          };
+          setHistory((prev) => {
+            const next = [...prev, entry];
+            setCurrentIndex(next.length - 1);
+            return next;
+          });
+        }
+      });
+      if (cancelled) { u2(); return; }
+      unlisteners.push(u2);
+
+      const u3 = await listen<string>("capture-error", (event) => {
+        if (!cancelled) {
+          setLoading(false);
+          setError(event.payload);
+        }
+      });
+      if (cancelled) { u3(); return; }
+      unlisteners.push(u3);
+    }
+
+    setup();
 
     return () => {
-      listeners.forEach((p) => p.then((unlisten) => unlisten()));
+      cancelled = true;
+      unlisteners.forEach((fn) => fn());
     };
   }, []);
 

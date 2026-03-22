@@ -576,6 +576,21 @@
   font-weight: 500;
 }
 
+/* Header loading dot */
+.header-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  animation: header-pulse 1s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes header-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
 /* History navigation */
 .history-nav {
   display: flex;
