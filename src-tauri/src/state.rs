@@ -27,6 +27,10 @@ pub struct AppState {
     pub network_jitter: Mutex<bool>,
     pub proxy_url: Mutex<String>,
     pub spoof_user_agent: Mutex<bool>,
+    // Watcher (continuous OCR)
+    pub watcher_active: Mutex<bool>,
+    pub watcher_interval_ms: Mutex<u64>,
+    pub last_ocr_text: Mutex<String>,
 }
 
 impl AppState {
@@ -201,6 +205,30 @@ impl AppState {
     pub fn set_spoof_user_agent(&self, val: bool) {
         *self.spoof_user_agent.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
+
+    pub fn get_watcher_active(&self) -> bool {
+        *self.watcher_active.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn set_watcher_active(&self, val: bool) {
+        *self.watcher_active.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn get_watcher_interval_ms(&self) -> u64 {
+        *self.watcher_interval_ms.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn set_watcher_interval_ms(&self, val: u64) {
+        *self.watcher_interval_ms.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn get_last_ocr_text(&self) -> String {
+        self.last_ocr_text.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn set_last_ocr_text(&self, val: String) {
+        *self.last_ocr_text.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
 }
 
 impl Default for AppState {
@@ -231,6 +259,9 @@ impl Default for AppState {
             network_jitter: Mutex::new(true),
             proxy_url: Mutex::new(String::new()),
             spoof_user_agent: Mutex::new(true),
+            watcher_active: Mutex::new(false),
+            watcher_interval_ms: Mutex::new(3000),
+            last_ocr_text: Mutex::new(String::new()),
         }
     }
 }
