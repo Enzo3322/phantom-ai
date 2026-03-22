@@ -20,6 +20,8 @@ mod whisper;
 
 use state::AppState;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::utils::config::WindowEffectsConfig;
+use tauri::utils::{WindowEffect, WindowEffectState};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, ShortcutState};
 #[cfg(target_os = "macos")]
 use objc::{msg_send, sel, sel_impl};
@@ -43,7 +45,12 @@ pub fn create_panel(app: &tauri::AppHandle, label: &str) {
         .skip_taskbar(true)
         .always_on_top(always_on_top)
         .visible(true)
-        .resizable(resizable);
+        .resizable(resizable)
+        .effects(WindowEffectsConfig {
+            effects: vec![WindowEffect::UnderWindowBackground],
+            state: Some(WindowEffectState::Active),
+            ..Default::default()
+        });
 
     if label == "welcome" {
         builder = builder.center();
