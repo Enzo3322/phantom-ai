@@ -12,6 +12,7 @@ import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { useGemini } from "../../hooks/useGemini";
 import { useRecording } from "../../hooks/useRecording";
 import { useTranscript } from "../../hooks/useTranscript";
+import { useWatcher } from "../../hooks/useWatcher";
 import "./MainPanel.css";
 
 const WIDTH = 380;
@@ -20,7 +21,7 @@ const TITLEBAR_HEIGHT = 40;
 const PADDING = 24;
 const MARGIN = 0;
 
-type Mode = "idle" | "response" | "recording" | "processing" | "error";
+type Mode = "idle" | "response" | "recording" | "processing" | "error" | "watching";
 
 export function MainPanel() {
   const { response, loading: geminiLoading, error: geminiError, source: geminiSource, clearResponse } = useGemini();
@@ -32,6 +33,7 @@ export function MainPanel() {
     error: transcriptionError,
     clearTranscript,
   } = useTranscript();
+  const { active: watcherActive } = useWatcher();
 
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const sideRef = useRef<"right" | "left">("right");
@@ -48,6 +50,7 @@ export function MainPanel() {
     if (isRecording) return "recording";
     if (response) return "response";
     if (geminiLoading) return "processing";
+    if (watcherActive) return "watching";
     return "idle";
   })();
 
@@ -157,6 +160,38 @@ export function MainPanel() {
     clearTranscript();
     clearResponse();
   };
+
+  // --- WATCHING (watcher active, no response yet) ---
+  if (mode === "watching") {
+    return (
+      <div className="main-panel">
+        <div className="main-titlebar" data-tauri-drag-region>
+          <div className="main-title-left">
+            <span className="watcher-dot" />
+            <span className="main-title">Watching...</span>
+          </div>
+        </div>
+        <div className="main-body main-processing-body">
+          <div className="brain-loading">
+            <svg
+              className="watcher-eye-icon"
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // --- IDLE (window is hidden) ---
   if (mode === "idle") {

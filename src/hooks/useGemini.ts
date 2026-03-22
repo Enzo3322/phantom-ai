@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-type GeminiSource = "screenshot" | "transcription" | null;
+type GeminiSource = "screenshot" | "transcription" | "watcher" | null;
 
 interface CaptureResponsePayload {
   text: string;
@@ -36,7 +36,8 @@ export function useGemini() {
         setLoading(true);
         setError(null);
         setResponse(null);
-        setSource(event.payload === "screenshot" ? "screenshot" : "transcription");
+        const src = event.payload;
+        setSource(src === "screenshot" ? "screenshot" : src === "watcher" ? "watcher" : "transcription");
       }),
       listen<CaptureResponsePayload>("capture-response", (event) => {
         setLoading(false);
