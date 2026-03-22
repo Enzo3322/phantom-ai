@@ -10,42 +10,56 @@ interface CaptureResponsePayload {
   model?: string;
 }
 
+interface HistoryEntry {
+  text: string;
+  source: GeminiSource;
+  model: string | null;
+}
+
 export function useGemini() {
-  const [response, setResponse] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<GeminiSource>(null);
-  const [model, setModel] = useState<string | null>(null);
 
   useEffect(() => {
     invoke<boolean>("get_processing_status").then((processing) => {
       if (processing) setLoading(true);
     });
-    invoke<string | null>("get_last_response").then((last) => {
-      if (last) {
-        if (last.startsWith("Error:")) {
-          setError(last);
-        } else {
-          setResponse(last);
-        }
+    invoke<Array<{ id: number; timestamp: string; source: string; model: string; response: string }>>(
+      "get_response_history"
+    ).then((entries) => {
+      if (entries.length > 0) {
+        const loaded = entries.map((e) => ({
+          text: e.response,
+          source: (e.source === "screenshot" ? "screenshot" : "transcription") as GeminiSource,
+          model: e.model,
+        }));
+        setHistory(loaded);
+        setCurrentIndex(loaded.length - 1);
       }
     });
   }, []);
 
   useEffect(() => {
     const listeners = [
-      listen<string>("processing-start", (event) => {
+      listen<string>("processing-start", () => {
         setLoading(true);
         setError(null);
-        setResponse(null);
-        setSource(event.payload === "screenshot" ? "screenshot" : "transcription");
       }),
       listen<CaptureResponsePayload>("capture-response", (event) => {
         setLoading(false);
-        setResponse(event.payload.text);
-        setSource(event.payload.source);
-        setModel(event.payload.model ?? null);
         setError(null);
+        const entry: HistoryEntry = {
+          text: event.payload.text,
+          source: event.payload.source,
+          model: event.payload.model ?? null,
+        };
+        setHistory((prev) => {
+          const next = [...prev, entry];
+          setCurrentIndex(next.length - 1);
+          return next;
+        });
       }),
       listen<string>("capture-error", (event) => {
         setLoading(false);
@@ -58,13 +72,34 @@ export function useGemini() {
     };
   }, []);
 
-  const clearResponse = useCallback(() => {
-    setResponse(null);
-    setLoading(false);
-    setError(null);
-    setSource(null);
-    setModel(null);
+  const goBack = useCallback(() => {
+    setCurrentIndex((i) => Math.max(0, i - 1));
   }, []);
 
-  return { response, loading, error, source, model, clearResponse };
+  const goForward = useCallback(() => {
+    setCurrentIndex((i) => Math.min(history.length - 1, i + 1));
+  }, [history.length]);
+
+  const current = currentIndex >= 0 && currentIndex < history.length ? history[currentIndex] : null;
+
+  const clearResponse = useCallback(() => {
+    setCurrentIndex(-1);
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  return {
+    response: current?.text ?? null,
+    source: current?.source ?? null,
+    model: current?.model ?? null,
+    loading,
+    error,
+    clearResponse,
+    goBack,
+    goForward,
+    canGoBack: currentIndex > 0,
+    canGoForward: currentIndex < history.length - 1,
+    historyCount: history.length,
+    historyIndex: currentIndex,
+  };
 }
