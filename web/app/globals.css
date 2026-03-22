@@ -13,7 +13,8 @@
   --text: #f5f5f7;
   --text-secondary: #a1a1a6;
   --accent: #0a84ff;
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    sans-serif;
   --max-w: 1080px;
   --radius: 14px;
   --glass-bg: rgba(255, 255, 255, 0.04);
@@ -44,7 +45,9 @@ a:hover {
   opacity: 0.85;
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -118,7 +121,12 @@ nav {
   width: 600px;
   height: 600px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(10, 132, 255, 0.15) 0%, rgba(10, 132, 255, 0.05) 40%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(10, 132, 255, 0.15) 0%,
+    rgba(10, 132, 255, 0.05) 40%,
+    transparent 70%
+  );
   pointer-events: none;
   transform: translate(-50%, -50%);
   top: 50%;
@@ -458,7 +466,6 @@ footer a {
   will-change: opacity, transform;
 }
 
-/* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   [data-animate] {
     opacity: 1 !important;
@@ -467,7 +474,6 @@ footer a {
   }
 }
 
-/* Initial states */
 [data-animate="fade-up"] {
   transform: translateY(40px);
 }
@@ -484,55 +490,74 @@ footer a {
   transform: perspective(800px) rotateX(25deg) translateY(30px);
 }
 
-/* Visible state */
 [data-animate].is-visible {
   opacity: 1;
   transform: none;
-  transition:
-    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Stagger delays via data-delay */
-[data-delay="1"].is-visible { transition-delay: 0.1s; }
-[data-delay="2"].is-visible { transition-delay: 0.2s; }
-[data-delay="3"].is-visible { transition-delay: 0.3s; }
-[data-delay="4"].is-visible { transition-delay: 0.4s; }
-[data-delay="5"].is-visible { transition-delay: 0.5s; }
+[data-delay="1"].is-visible {
+  transition-delay: 0.1s;
+}
+[data-delay="2"].is-visible {
+  transition-delay: 0.2s;
+}
+[data-delay="3"].is-visible {
+  transition-delay: 0.3s;
+}
+[data-delay="4"].is-visible {
+  transition-delay: 0.4s;
+}
+[data-delay="5"].is-visible {
+  transition-delay: 0.5s;
+}
 
-/* Glow on feature cards when revealed */
 [data-animate="scale-in"].is-visible .feature-icon {
   animation: iconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   animation-delay: inherit;
 }
 
 @keyframes iconPop {
-  0% { transform: scale(0.5); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
-/* Step number pulse on reveal */
 [data-animate="slide-left"].is-visible .step-number {
   animation: numberReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @keyframes numberReveal {
-  0% { transform: scale(0) rotate(-180deg); }
-  100% { transform: scale(1) rotate(0deg); }
+  0% {
+    transform: scale(0) rotate(-180deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
-/* Shortcut kbd bounce */
 [data-animate="flip-in"].is-visible kbd {
   animation: kbdBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @keyframes kbdBounce {
-  0% { transform: scale(0.7); }
-  60% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
-/* Section divider line that draws in */
 #features::before,
 #stealth-layers::before,
 #how-it-works::before,
@@ -542,7 +567,12 @@ footer a {
   display: block;
   width: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--glass-border),
+    transparent
+  );
   margin: 0 auto 60px;
   transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
 }
