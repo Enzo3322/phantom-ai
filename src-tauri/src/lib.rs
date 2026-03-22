@@ -216,6 +216,7 @@ async fn handle_capture(app: tauri::AppHandle) {
             let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "screenshot", "model": model }));
             if let Some(db_path) = state.get_usage_db_path() {
                 usage_db::record_usage(&db_path, "screenshot", &model, usage.input_tokens, usage.output_tokens);
+                usage_db::record_response(&db_path, "screenshot", &model, &response);
             }
         }
         Err(e) => {
@@ -300,6 +301,7 @@ pub fn run() {
             commands::type_text,
             commands::ephemeral_paste,
             commands::get_token_usage,
+            commands::get_response_history,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

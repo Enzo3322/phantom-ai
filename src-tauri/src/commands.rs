@@ -206,6 +206,7 @@ pub async fn send_transcription_to_gemini(
             let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "transcription", "model": model }));
             if let Some(db_path) = state.get_usage_db_path() {
                 crate::usage_db::record_usage(&db_path, "transcription", &model, usage.input_tokens, usage.output_tokens);
+                crate::usage_db::record_response(&db_path, "transcription", &model, &response);
             }
             Ok(())
         }
@@ -272,6 +273,14 @@ pub fn ephemeral_paste(text: String) {
 pub fn get_token_usage(state: tauri::State<'_, AppState>) -> Vec<crate::usage_db::UsageSummary> {
     match state.get_usage_db_path() {
         Some(path) => crate::usage_db::get_usage_summary(&path),
+        None => Vec::new(),
+    }
+}
+
+#[tauri::command]
+pub fn get_response_history(state: tauri::State<'_, AppState>) -> Vec<crate::usage_db::ResponseEntry> {
+    match state.get_usage_db_path() {
+        Some(path) => crate::usage_db::get_response_history(&path),
         None => Vec::new(),
     }
 }
