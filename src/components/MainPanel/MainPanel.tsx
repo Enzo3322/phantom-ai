@@ -14,7 +14,6 @@ import { useTranscript } from "../../hooks/useTranscript";
 import "./MainPanel.css";
 
 const WIDTH = 380;
-const IDLE_HEIGHT = 48;
 const MIN_RESPONSE_HEIGHT = 120;
 const TITLEBAR_HEIGHT = 40;
 const PADDING = 24;
@@ -62,11 +61,16 @@ export function MainPanel() {
     });
   }, []);
 
-  // Resize based on mode
+  // Resize and show/hide based on mode
   useEffect(() => {
     const { width: screenWidth, height: screenHeight } = screenRef.current;
     const win = getCurrentWindow();
     const maxHeight = screenHeight - MARGIN * 2;
+
+    if (mode === "idle") {
+      win.hide();
+      return;
+    }
 
     let height: number;
     if (mode === "recording") {
@@ -78,13 +82,14 @@ export function MainPanel() {
     } else if (mode === "processing") {
       height = 120;
     } else {
-      height = IDLE_HEIGHT;
+      height = 120;
     }
 
     win.setSize(new LogicalSize(WIDTH, height));
     win.setPosition(
       new LogicalPosition(screenWidth - WIDTH - MARGIN, MARGIN)
     );
+    win.show();
   }, [mode, response, transcript]);
 
   // Clear stale Gemini response when a new recording starts
@@ -141,51 +146,9 @@ export function MainPanel() {
     clearResponse();
   };
 
-  const handleOpenSettings = async () => {
-    try {
-      await invoke("open_settings");
-    } catch (e) {
-      console.error("Open settings failed:", e);
-    }
-  };
-
-  // --- IDLE ---
+  // --- IDLE (window is hidden) ---
   if (mode === "idle") {
-    return (
-      <div className="main-panel">
-        <div className="main-idle-bar" data-tauri-drag-region>
-          <div className="main-idle-left">
-            <svg
-              className="main-idle-icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path
-                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"
-                strokeLinecap="round"
-              />
-              <path d="M9 9h.01M15 9h.01" strokeLinecap="round" />
-              <path
-                d="M8 13c1 2 3 3 4 3s3-1 4-3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="main-idle-text">Phantom</span>
-          </div>
-          <div className="main-idle-right">
-            <button className="main-settings-btn" onClick={handleOpenSettings}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // --- ERROR ---
