@@ -1,6 +1,7 @@
 mod audio;
 mod capture;
 mod commands;
+mod dodge;
 mod gemini;
 mod hallucination;
 mod recording;
@@ -276,6 +277,8 @@ pub fn run() {
                 create_panel(&handle, "main");
             }
 
+            dodge::start_dodge_watcher(handle.clone());
+
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -301,11 +304,6 @@ fn load_config_from_store(app: &tauri::AppHandle) {
         if let Some(val) = store.get("prompt") {
             if let Some(s) = val.as_str() {
                 state.set_prompt(s.to_string());
-            }
-        }
-        if let Some(val) = store.get("opacity") {
-            if let Some(n) = val.as_f64() {
-                state.set_opacity(n);
             }
         }
         if let Some(val) = store.get("stealth_mode") {
@@ -342,6 +340,11 @@ fn load_config_from_store(app: &tauri::AppHandle) {
         if let Some(val) = store.get("has_onboarded") {
             if let Some(b) = val.as_bool() {
                 state.set_has_onboarded(b);
+            }
+        }
+        if let Some(val) = store.get("dodge_on_hover") {
+            if let Some(b) = val.as_bool() {
+                state.set_dodge_on_hover(b);
             }
         }
 

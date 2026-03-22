@@ -329,36 +329,6 @@ kbd {
   letter-spacing: 1px;
 }
 
-.opacity-value {
-  float: right;
-  font-weight: 400;
-  color: var(--text-tertiary);
-}
-
-.opacity-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
-  outline: none;
-  border: none;
-  padding: 0;
-  margin: 4px 0;
-}
-
-.opacity-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--text-accent);
-  cursor: pointer;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
 .stealth-row {
   display: flex;
   align-items: center;

@@ -6,7 +6,6 @@ pub struct AppState {
     pub prompt: Mutex<String>,
     pub last_response: Mutex<Option<String>>,
     pub is_processing: Mutex<bool>,
-    pub opacity: Mutex<f64>,
     pub stealth_mode: Mutex<bool>,
     pub is_recording: Mutex<bool>,
     pub transcription_text: Mutex<String>,
@@ -16,6 +15,7 @@ pub struct AppState {
     pub vocab_seed: Mutex<String>,
     pub response_language: Mutex<String>,
     pub has_onboarded: Mutex<bool>,
+    pub dodge_on_hover: Mutex<bool>,
 }
 
 impl AppState {
@@ -37,10 +37,6 @@ impl AppState {
 
     pub fn get_processing(&self) -> bool {
         *self.is_processing.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
-    pub fn get_opacity(&self) -> f64 {
-        *self.opacity.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     pub fn get_stealth_mode(&self) -> bool {
@@ -91,10 +87,6 @@ impl AppState {
         *self.is_processing.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
 
-    pub fn set_opacity(&self, val: f64) {
-        *self.opacity.lock().unwrap_or_else(|e| e.into_inner()) = val;
-    }
-
     pub fn set_stealth_mode(&self, val: bool) {
         *self.stealth_mode.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
@@ -138,6 +130,14 @@ impl AppState {
     pub fn set_has_onboarded(&self, val: bool) {
         *self.has_onboarded.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
+
+    pub fn get_dodge_on_hover(&self) -> bool {
+        *self.dodge_on_hover.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn set_dodge_on_hover(&self, val: bool) {
+        *self.dodge_on_hover.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
 }
 
 impl Default for AppState {
@@ -151,7 +151,6 @@ impl Default for AppState {
             ),
             last_response: Mutex::new(None),
             is_processing: Mutex::new(false),
-            opacity: Mutex::new(0.85),
             stealth_mode: Mutex::new(true),
             is_recording: Mutex::new(false),
             transcription_text: Mutex::new(String::new()),
@@ -161,6 +160,7 @@ impl Default for AppState {
             vocab_seed: Mutex::new(String::new()),
             response_language: Mutex::new("auto".to_string()),
             has_onboarded: Mutex::new(false),
+            dodge_on_hover: Mutex::new(false),
         }
     }
 }

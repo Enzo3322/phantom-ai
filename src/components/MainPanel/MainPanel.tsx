@@ -6,6 +6,7 @@ import {
   LogicalPosition,
   currentMonitor,
 } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import Markdown from "react-markdown";
 import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { useGemini } from "../../hooks/useGemini";
@@ -33,6 +34,7 @@ export function MainPanel() {
   } = useTranscript();
 
   const [dismissedError, setDismissedError] = useState<string | null>(null);
+  const [side, setSide] = useState<"right" | "left">("right");
   const scrollRef = useRef<HTMLDivElement>(null);
   const responseRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -85,12 +87,14 @@ export function MainPanel() {
       height = 120;
     }
 
+    const x = side === "right"
+      ? screenWidth - WIDTH - MARGIN
+      : MARGIN;
+
     win.setSize(new LogicalSize(WIDTH, height));
-    win.setPosition(
-      new LogicalPosition(screenWidth - WIDTH - MARGIN, MARGIN)
-    );
+    win.setPosition(new LogicalPosition(x, MARGIN));
     win.show();
-  }, [mode, response, transcript]);
+  }, [mode, response, transcript, side]);
 
   // Clear stale Gemini response when a new recording starts
   useEffect(() => {
@@ -129,6 +133,14 @@ export function MainPanel() {
       responseRef.current.scrollTop = responseRef.current.scrollHeight;
     }
   }, [response]);
+
+  // Listen for dodge-move events from the Rust backend
+  useEffect(() => {
+    const unlisten = listen("dodge-move", () => {
+      setSide((prev) => (prev === "right" ? "left" : "right"));
+    });
+    return () => { unlisten.then((f) => f()); };
+  }, []);
 
   const handleToggleRecording = async () => {
     try {

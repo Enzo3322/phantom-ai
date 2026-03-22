@@ -51,13 +51,13 @@ pub struct Config {
     pub api_key: String,
     pub model: String,
     pub prompt: String,
-    pub opacity: f64,
     pub stealth_mode: bool,
     pub whisper_model_size: String,
     pub whisper_language: String,
     pub audio_source: String,
     pub vocab_seed: String,
     pub response_language: String,
+    pub dodge_on_hover: bool,
 }
 
 #[tauri::command]
@@ -66,13 +66,13 @@ pub fn get_config(state: tauri::State<'_, AppState>) -> Config {
         api_key: state.get_api_key(),
         model: state.get_model(),
         prompt: state.get_prompt(),
-        opacity: state.get_opacity(),
         stealth_mode: state.get_stealth_mode(),
         whisper_model_size: state.get_whisper_model_size(),
         whisper_language: state.get_whisper_language(),
         audio_source: state.get_audio_source(),
         vocab_seed: state.get_vocab_seed(),
         response_language: state.get_response_language(),
+        dodge_on_hover: state.get_dodge_on_hover(),
     }
 }
 
@@ -81,26 +81,26 @@ pub fn save_config(
     api_key: String,
     model: String,
     prompt: String,
-    opacity: f64,
     stealth_mode: bool,
     whisper_model_size: String,
     whisper_language: String,
     audio_source: String,
     vocab_seed: String,
     response_language: String,
+    dodge_on_hover: bool,
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) {
     state.set_api_key(api_key);
     state.set_model(model);
     state.set_prompt(prompt);
-    state.set_opacity(opacity);
     state.set_stealth_mode(stealth_mode);
     state.set_whisper_model_size(whisper_model_size);
     state.set_whisper_language(whisper_language);
     state.set_audio_source(audio_source);
     state.set_vocab_seed(vocab_seed);
     state.set_response_language(response_language);
+    state.set_dodge_on_hover(dodge_on_hover);
 
     #[cfg(target_os = "macos")]
     crate::stealth::set_stealth_for_all_windows(&app, stealth_mode);

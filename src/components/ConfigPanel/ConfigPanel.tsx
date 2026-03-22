@@ -121,11 +121,6 @@ export function ConfigPanel() {
     resizeToFit();
   }, [resizeToFit, activeTab]);
 
-  const handleOpacityChange = (val: number) => {
-    document.documentElement.style.setProperty("--bg-opacity", String(val));
-    updateConfig({ opacity: val });
-  };
-
   const handleClose = () => {
     getCurrentWindow().hide();
   };
@@ -310,25 +305,6 @@ export function ConfigPanel() {
             </div>
 
             <div className="field">
-              <label>
-                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                Opacity
-                <span className="opacity-value">
-                  {Math.round(config.opacity * 100)}%
-                </span>
-              </label>
-              <input
-                type="range"
-                min="0.1"
-                max="1"
-                step="0.05"
-                value={config.opacity}
-                onChange={(e) => handleOpacityChange(Number(e.target.value))}
-                className="opacity-slider"
-              />
-            </div>
-
-            <div className="field">
               <div className="stealth-row">
                 <div className="stealth-info">
                   <label>Stealth Mode</label>
@@ -340,6 +316,25 @@ export function ConfigPanel() {
                   className={`stealth-toggle ${config.stealth_mode ? "active" : ""}`}
                   onClick={() =>
                     updateConfig({ stealth_mode: !config.stealth_mode })
+                  }
+                >
+                  <span className="stealth-toggle-knob" />
+                </button>
+              </div>
+            </div>
+
+            <div className="field">
+              <div className="stealth-row">
+                <div className="stealth-info">
+                  <label>Dodge on Hover</label>
+                  <span className="stealth-desc">
+                    Move window to opposite corner when cursor hovers for 2s
+                  </span>
+                </div>
+                <button
+                  className={`stealth-toggle ${config.dodge_on_hover ? "active" : ""}`}
+                  onClick={() =>
+                    updateConfig({ dodge_on_hover: !config.dodge_on_hover })
                   }
                 >
                   <span className="stealth-toggle-knob" />
