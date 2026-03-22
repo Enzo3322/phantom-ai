@@ -60,7 +60,7 @@ The floating response window that appears in the top-right corner with the AI an
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Enzo3322/phantom.git
+git clone https://github.com/Enzo3322/phantom-ai.git
 cd phantom
 ```
 

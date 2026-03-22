@@ -4,15 +4,56 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Phantom — AI-Powered Screenshot Analysis for macOS</title>
-  <meta name="description" content="Capture your screen with a shortcut, get instant AI responses powered by Google Gemini — all in a floating overlay invisible to screen capture.">
+  <meta name="description" content="Capture your screen with a shortcut, get instant AI responses powered by Google Gemini — all in a stealth floating overlay invisible to screen capture. Free and open source.">
+  <meta name="keywords" content="screenshot analysis, AI assistant, macOS, stealth mode, Google Gemini, screen capture, Tauri, voice transcription, Whisper">
+  <meta name="author" content="Enzo Spagnolli">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://enzo3322.github.io/phantom">
+
   <meta property="og:title" content="Phantom — AI-Powered Screenshot Analysis for macOS">
-  <meta property="og:description" content="Stealthy, AI-powered screenshot analysis tool for macOS.">
+  <meta property="og:description" content="Press a shortcut, get instant AI answers in a floating overlay invisible to screen capture.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://enzo3322.github.io/phantom">
+  <meta property="og:site_name" content="Phantom">
+  <meta property="og:locale" content="en_US">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Phantom — AI-Powered Screenshot Analysis for macOS">
+  <meta name="twitter:description" content="Press a shortcut, get instant AI answers in a floating overlay invisible to screen capture.">
+
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <link rel="stylesheet" href="styles.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Phantom",
+    "operatingSystem": "macOS",
+    "applicationCategory": "UtilitiesApplication",
+    "description": "AI-powered screenshot analysis tool for macOS with stealth mode. Capture your screen with a shortcut and get instant AI responses in a floating overlay invisible to screen capture.",
+    "url": "https://enzo3322.github.io/phantom",
+    "downloadUrl": "https://enzo3322.github.io/phantom/downloads/Phantom.dmg",
+    "softwareVersion": "0.1.0",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Enzo Spagnolli"
+    }
+  }
+  </script>
 </head>
 <body>
 
   <section id="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
     <nav>
       <span class="logo">Phantom</span>
       <div class="nav-links">
@@ -22,42 +63,42 @@
       </div>
     </nav>
     <div class="hero-content">
-      <h1>AI-powered screenshot analysis.<br>Invisible to screen capture.</h1>
-      <p class="hero-sub">Press a shortcut, get instant AI answers in a floating overlay that no one else can see.</p>
-      <a href="/downloads/Phantom.dmg" class="btn-download">Download for macOS</a>
-      <span class="hero-note">macOS 12+ &middot; Apple Silicon &middot; Free</span>
+      <h1 data-animate="fade-up">AI-powered screenshot analysis.<br>Invisible to screen capture.</h1>
+      <p class="hero-sub" data-animate="fade-up" data-delay="1">Press a shortcut, get instant AI answers in a floating overlay that no one else can see.</p>
+      <a href="downloads/Phantom.dmg" class="btn-download" data-animate="fade-up" data-delay="2">Download for macOS</a>
+      <span class="hero-note" data-animate="fade-up" data-delay="3">macOS 12+ &middot; Apple Silicon &middot; Free</span>
     </div>
   </section>
 
   <section id="features">
-    <h2>Features</h2>
+    <h2 data-animate="fade-up">Features</h2>
     <div class="features-grid">
-      <div class="feature-card">
+      <div class="feature-card" data-animate="scale-in" data-delay="0">
         <div class="feature-icon">&#128373;</div>
         <h3>Stealth Mode</h3>
         <p>The overlay is invisible to screenshots and screen recordings. Only you can see it.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="scale-in" data-delay="1">
         <div class="feature-icon">&#9889;</div>
         <h3>Instant Analysis</h3>
         <p>Press <kbd>&#8984;&#8679;S</kbd> to capture your screen and get an AI response in seconds.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="scale-in" data-delay="2">
         <div class="feature-icon">&#127908;</div>
         <h3>Voice Transcription</h3>
         <p>Record audio with <kbd>&#8984;&#8679;M</kbd> and get instant AI-powered transcription via Whisper.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="scale-in" data-delay="3">
         <div class="feature-icon">&#129302;</div>
         <h3>Multiple AI Models</h3>
         <p>Choose between Gemini 2.0 Flash, 2.5 Flash, 2.5 Pro, and 3.1 Pro.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="scale-in" data-delay="4">
         <div class="feature-icon">&#9000;</div>
         <h3>Keyboard-First</h3>
         <p>Global shortcuts work from any app. No dock icon, no distractions.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card" data-animate="scale-in" data-delay="5">
         <div class="feature-icon">&#128736;</div>
         <h3>Customizable</h3>
         <p>Custom prompts, vocab context, quick action modes, and response language settings.</p>
@@ -66,19 +107,19 @@
   </section>
 
   <section id="how-it-works">
-    <h2>How it works</h2>
+    <h2 data-animate="fade-up">How it works</h2>
     <div class="steps">
-      <div class="step">
+      <div class="step" data-animate="slide-left" data-delay="0">
         <span class="step-number">1</span>
         <h3>Capture</h3>
         <p>Press <kbd>&#8984;&#8679;S</kbd> — Phantom takes a screenshot using native macOS APIs. The app window is excluded automatically.</p>
       </div>
-      <div class="step">
+      <div class="step" data-animate="slide-left" data-delay="1">
         <span class="step-number">2</span>
         <h3>Analyze</h3>
         <p>The screenshot is sent to Google Gemini with your chosen prompt. Processing takes just a few seconds.</p>
       </div>
-      <div class="step">
+      <div class="step" data-animate="slide-left" data-delay="2">
         <span class="step-number">3</span>
         <h3>Read</h3>
         <p>The AI response appears in a floating overlay at the corner of your screen — always on top, invisible to others.</p>
@@ -87,21 +128,21 @@
   </section>
 
   <section id="shortcuts">
-    <h2>Shortcuts</h2>
+    <h2 data-animate="fade-up">Shortcuts</h2>
     <div class="shortcuts-list">
-      <div class="shortcut-item">
+      <div class="shortcut-item" data-animate="flip-in" data-delay="0">
         <kbd>&#8984;&#8679;S</kbd>
         <span>Capture & Analyze</span>
       </div>
-      <div class="shortcut-item">
+      <div class="shortcut-item" data-animate="flip-in" data-delay="1">
         <kbd>&#8984;&#8679;M</kbd>
         <span>Toggle Recording</span>
       </div>
-      <div class="shortcut-item">
+      <div class="shortcut-item" data-animate="flip-in" data-delay="2">
         <kbd>&#8984;&#8679;A</kbd>
         <span>Toggle Response Panel</span>
       </div>
-      <div class="shortcut-item">
+      <div class="shortcut-item" data-animate="flip-in" data-delay="3">
         <kbd>&#8984;&#8679;C</kbd>
         <span>Toggle Settings</span>
       </div>
@@ -109,15 +150,15 @@
   </section>
 
   <section id="download">
-    <h2>Get Phantom</h2>
-    <p>Free and open source. Download, add your Gemini API key, and go.</p>
-    <a href="/downloads/Phantom.dmg" class="btn-download">Download for macOS</a>
-    <span class="hero-note">macOS 12+ &middot; Apple Silicon &middot; v0.1.0</span>
+    <h2 data-animate="fade-up">Get Phantom</h2>
+    <p data-animate="fade-up" data-delay="1">Free and open source. Download, add your Gemini API key, and go.</p>
+    <a href="downloads/Phantom.dmg" class="btn-download" data-animate="scale-in" data-delay="2">Download for macOS</a>
+    <span class="hero-note" data-animate="fade-up" data-delay="3">macOS 12+ &middot; Apple Silicon &middot; v0.1.0</span>
   </section>
 
   <footer>
     <p>Built with <a href="https://tauri.app/" target="_blank" rel="noopener">Tauri</a> and <a href="https://ai.google.dev/" target="_blank" rel="noopener">Google Gemini</a></p>
-    <p><a href="https://github.com/Enzo3322/phantom" target="_blank" rel="noopener">GitHub</a></p>
+    <p><a href="https://github.com/Enzo3322/phantom-ai" target="_blank" rel="noopener">GitHub</a></p>
   </footer>
 
   <script src="script.js"></script>
