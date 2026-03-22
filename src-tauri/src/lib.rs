@@ -50,25 +50,49 @@ pub fn create_panel(app: &tauri::AppHandle, label: &str) {
 }
 
 pub fn toggle_window(app: &tauri::AppHandle, label: &str) {
+    let needs_focus = label != "main";
+
     if let Some(window) = app.get_webview_window(label) {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
         } else {
-            activate_app();
-            let _ = window.show();
-            let _ = window.set_focus();
+            if needs_focus {
+                activate_app();
+                let _ = window.show();
+                let _ = window.set_focus();
+            } else {
+                let _ = window.show();
+                #[cfg(target_os = "macos")]
+                {
+                    use cocoa::base::id;
+                    if let Ok(ns_window) = window.ns_window() {
+                        unsafe {
+                            let _: () = msg_send![ns_window as id, orderFrontRegardless];
+                        }
+                    }
+                }
+            }
         }
     } else {
-        activate_app();
+        if needs_focus {
+            activate_app();
+        }
         create_panel(app, label);
     }
 }
 
 fn show_window(app: &tauri::AppHandle, label: &str) {
-    activate_app();
     if let Some(window) = app.get_webview_window(label) {
         let _ = window.show();
-        let _ = window.set_focus();
+        #[cfg(target_os = "macos")]
+        {
+            use cocoa::base::id;
+            if let Ok(ns_window) = window.ns_window() {
+                unsafe {
+                    let _: () = msg_send![ns_window as id, orderFrontRegardless];
+                }
+            }
+        }
     } else {
         create_panel(app, label);
     }
