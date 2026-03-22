@@ -14,6 +14,7 @@ mod recording;
 mod state;
 mod stealth;
 mod vad;
+mod usage_db;
 mod watcher;
 mod whisper;
 
@@ -334,6 +335,22 @@ pub fn run() {
 
             process_stealth::apply_process_stealth(&handle);
             dodge::start_dodge_watcher(handle.clone());
+
+            // Initialize token usage database
+            if let Ok(app_data) = handle.path().app_data_dir() {
+                let _ = std::fs::create_dir_all(&app_data);
+                let db_path = app_data.join("phantom_usage.db");
+                let db_path_str = db_path.to_string_lossy().to_string();
+                match usage_db::open_db(&db_path) {
+                    Ok(_) => {
+                        eprintln!("[phantom] usage db initialized at: {db_path_str}");
+                        handle.state::<AppState>().set_usage_db_path(Some(db_path_str));
+                    }
+                    Err(e) => {
+                        eprintln!("[phantom] usage db init failed: {e}");
+                    }
+                }
+            }
 
             Ok(())
         })
