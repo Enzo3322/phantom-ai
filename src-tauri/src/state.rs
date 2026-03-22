@@ -31,6 +31,8 @@ pub struct AppState {
     pub watcher_active: Mutex<bool>,
     pub watcher_interval_ms: Mutex<u64>,
     pub last_ocr_text: Mutex<String>,
+    // Token usage tracking
+    pub usage_db_path: Mutex<Option<String>>,
 }
 
 impl AppState {
@@ -229,6 +231,14 @@ impl AppState {
     pub fn set_last_ocr_text(&self, val: String) {
         *self.last_ocr_text.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
+
+    pub fn get_usage_db_path(&self) -> Option<String> {
+        self.usage_db_path.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn set_usage_db_path(&self, val: Option<String>) {
+        *self.usage_db_path.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
 }
 
 impl Default for AppState {
@@ -262,6 +272,7 @@ impl Default for AppState {
             watcher_active: Mutex::new(false),
             watcher_interval_ms: Mutex::new(3000),
             last_ocr_text: Mutex::new(String::new()),
+            usage_db_path: Mutex::new(None),
         }
     }
 }
