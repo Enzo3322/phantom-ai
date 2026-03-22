@@ -235,7 +235,7 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             api_key: Mutex::new(String::new()),
-            model: Mutex::new("gemini-2.0-flash".to_string()),
+            model: Mutex::new("gemini-2.5-flash".to_string()),
             prompt: Mutex::new(
                 "Analyze this screenshot and answer any questions visible on screen. Be concise and direct."
                     .to_string(),

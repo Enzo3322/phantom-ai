@@ -210,7 +210,7 @@ pub fn compute_similarity(a: &str, b: &str) -> f64 {
     f64::from(intersection_count) / f64::from(union_count)
 }
 
-const FLASH_MODEL: &str = "gemini-2.0-flash";
+const FLASH_MODEL: &str = "gemini-2.5-flash";
 const PRO_MODEL: &str = "gemini-2.5-pro";
 const SIMILARITY_THRESHOLD: f64 = 0.85;
 const MIN_INTERVAL_MS: u64 = 2000;
@@ -437,8 +437,11 @@ pub fn start_watcher(app: tauri::AppHandle) {
                             "source": "watcher"
                         }),
                     );
-                    // After processing, set default interval
-                    state.set_watcher_interval_ms(DEFAULT_INTERVAL_MS);
+                    // Stop watcher after successful response
+                    state.set_watcher_active(false);
+                    let _ = app.emit("watcher-stopped", ());
+                    eprintln!("[phantom] watcher: stopped after response");
+                    break;
                 }
                 Err(e) => {
                     eprintln!("[phantom] watcher: Pro API error: {e}");

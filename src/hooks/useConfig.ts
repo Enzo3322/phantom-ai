@@ -23,7 +23,7 @@ interface Config {
 export function useConfig() {
   const [config, setConfig] = useState<Config>({
     api_key: "",
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash-lite",
     prompt:
       "Analyze this screenshot and answer any questions visible on screen. Be concise and direct.",
     stealth_mode: true,
