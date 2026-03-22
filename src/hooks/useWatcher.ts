@@ -2,13 +2,24 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-interface WatcherTickPayload {
-  status: "no_change" | "processing";
-}
+type WatcherStage =
+  | "idle"
+  | "capturing"
+  | "extracting"
+  | "analyzing"
+  | "generating";
+
+const STAGE_LABELS: Record<WatcherStage, string> = {
+  idle: "Watching...",
+  capturing: "Capturing screen...",
+  extracting: "Extracting content...",
+  analyzing: "Analyzing content...",
+  generating: "Generating response...",
+};
 
 export function useWatcher() {
   const [active, setActive] = useState(false);
-  const [lastTick, setLastTick] = useState<string | null>(null);
+  const [stage, setStage] = useState<WatcherStage>("idle");
 
   useEffect(() => {
     invoke<boolean>("get_watcher_status").then(setActive);
@@ -18,14 +29,17 @@ export function useWatcher() {
     const listeners = [
       listen("watcher-started", () => {
         setActive(true);
-        setLastTick(null);
+        setStage("idle");
       }),
       listen("watcher-stopped", () => {
         setActive(false);
-        setLastTick(null);
+        setStage("idle");
       }),
-      listen<WatcherTickPayload>("watcher-ocr-tick", (event) => {
-        setLastTick(event.payload.status);
+      listen<string>("watcher-stage", (event) => {
+        const s = event.payload;
+        if (s in STAGE_LABELS) {
+          setStage(s as WatcherStage);
+        }
       }),
     ];
 
@@ -38,5 +52,7 @@ export function useWatcher() {
     await invoke("toggle_watcher");
   }, []);
 
-  return { active, lastTick, toggleWatcher };
+  const stageLabel = STAGE_LABELS[stage];
+
+  return { active, stage, stageLabel, toggleWatcher };
 }

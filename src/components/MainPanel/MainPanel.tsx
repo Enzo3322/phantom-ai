@@ -33,7 +33,7 @@ export function MainPanel() {
     error: transcriptionError,
     clearTranscript,
   } = useTranscript();
-  const { active: watcherActive } = useWatcher();
+  const { active: watcherActive, stage: watcherStage, stageLabel: watcherStageLabel } = useWatcher();
 
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const sideRef = useRef<"right" | "left">("right");
@@ -163,30 +163,49 @@ export function MainPanel() {
 
   // --- WATCHING (watcher active, no response yet) ---
   if (mode === "watching") {
+    const isProcessing = watcherStage !== "idle";
     return (
       <div className="main-panel">
         <div className="main-titlebar" data-tauri-drag-region>
           <div className="main-title-left">
-            <span className="watcher-dot" />
-            <span className="main-title">Watching...</span>
+            <span className={isProcessing ? "watcher-dot processing" : "watcher-dot"} />
+            <span className="main-title">{watcherStageLabel}</span>
           </div>
         </div>
         <div className="main-body main-processing-body">
           <div className="brain-loading">
-            <svg
-              className="watcher-eye-icon"
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            {isProcessing ? (
+              <svg
+                className="brain-loading-icon"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9.5 2a3.5 3.5 0 0 0-3.4 4.4A3.5 3.5 0 0 0 4 10a3.5 3.5 0 0 0 1.8 3.1A3.5 3.5 0 0 0 7 17a3.5 3.5 0 0 0 3.5 3.5c.8 0 1.5-.2 2.1-.6" />
+                <path d="M14.5 2a3.5 3.5 0 0 1 3.4 4.4A3.5 3.5 0 0 1 20 10a3.5 3.5 0 0 1-1.8 3.1A3.5 3.5 0 0 1 17 17a3.5 3.5 0 0 1-3.5 3.5c-.8 0-1.5-.2-2.1-.6" />
+                <path d="M12 2v20" />
+              </svg>
+            ) : (
+              <svg
+                className="watcher-eye-icon"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
           </div>
         </div>
       </div>

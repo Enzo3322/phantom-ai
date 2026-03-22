@@ -245,6 +245,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
             eprintln!("[phantom] watcher: tick (interval={}ms)", interval_ms);
 
             // 1. Capture screenshot
+            let _ = app.emit("watcher-stage", "capturing");
             let image_bytes = match tokio::task::spawn_blocking(capture_screenshot_png).await {
                 Ok(Ok(bytes)) => bytes,
                 Ok(Err(e)) => {
@@ -265,6 +266,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
             };
 
             // 2. Run OCR on the image bytes
+            let _ = app.emit("watcher-stage", "extracting");
             let image_bytes_clone = image_bytes.clone();
             let ocr_text = match tokio::task::spawn_blocking(move || {
                 ocr_image_bytes(&image_bytes_clone)
@@ -303,6 +305,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
 
             if similarity >= SIMILARITY_THRESHOLD {
                 // No significant change — increase interval
+                let _ = app.emit("watcher-stage", "idle");
                 let _ = app.emit(
                     "watcher-ocr-tick",
                     serde_json::json!({
@@ -348,6 +351,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
             let response_language = state.get_response_language();
 
             // 5. Send to Flash model to filter/structure
+            let _ = app.emit("watcher-stage", "analyzing");
             let flash_prompt = format!(
                 "You are a screen content filter. Analyze the following OCR text extracted from a screen capture.\n\
                 Filter out UI noise (menu bars, status bars, window chrome, timestamps, icons).\n\
@@ -390,6 +394,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
             // 6. Check if Flash says no relevant content
             if filtered_text.trim() == "NO_RELEVANT_CONTENT" {
                 eprintln!("[phantom] watcher: no relevant content, skipping Pro");
+                let _ = app.emit("watcher-stage", "idle");
                 let _ = app.emit(
                     "watcher-ocr-tick",
                     serde_json::json!({ "status": "no_relevant_content" }),
@@ -400,6 +405,7 @@ pub fn start_watcher(app: tauri::AppHandle) {
             }
 
             // 7. Send to Pro model for full response
+            let _ = app.emit("watcher-stage", "generating");
             let lang_instruction = match response_language.as_str() {
                 "auto" | "" => String::new(),
                 lang => format!("\n\nIMPORTANT: You MUST respond in {lang}."),

@@ -32,6 +32,8 @@ struct InlineData {
 struct GeminiResponse {
     candidates: Option<Vec<Candidate>>,
     error: Option<GeminiError>,
+    #[serde(default, rename = "usageMetadata")]
+    usage_metadata: Option<UsageMetadata>,
 }
 
 #[derive(Deserialize)]
@@ -56,6 +58,31 @@ struct ResponsePart {
     text: String,
 }
 
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct UsageMetadata {
+    #[serde(default)]
+    prompt_token_count: u32,
+    #[serde(default)]
+    candidates_token_count: u32,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct TokenUsage {
+    pub input_tokens: u32,
+    pub output_tokens: u32,
+}
+
+fn extract_usage(metadata: Option<UsageMetadata>) -> TokenUsage {
+    match metadata {
+        Some(m) => TokenUsage {
+            input_tokens: m.prompt_token_count,
+            output_tokens: m.candidates_token_count,
+        },
+        None => TokenUsage::default(),
+    }
+}
+
 pub async fn analyze_screenshot(
     api_key: &str,
     model: &str,
@@ -65,7 +92,7 @@ pub async fn analyze_screenshot(
     spoof_ua: bool,
     jitter: bool,
     proxy_url: Option<&str>,
-) -> Result<String, String> {
+) -> Result<(String, TokenUsage), String> {
     let lang_instruction = match response_language {
         "auto" | "" => String::new(),
         lang => format!("\n\nIMPORTANT: You MUST respond in {lang}."),
@@ -131,6 +158,8 @@ pub async fn analyze_screenshot(
     let body: GeminiResponse = serde_json::from_str(&raw)
         .map_err(|e| format!("Failed to parse response: {e}"))?;
 
+    let usage = extract_usage(body.usage_metadata);
+
     let result = body
         .candidates
         .and_then(|c| c.into_iter().next())
@@ -144,7 +173,7 @@ pub async fn analyze_screenshot(
         return Err("Empty response from Gemini".to_string());
     }
 
-    Ok(result)
+    Ok((result, usage))
 }
 
 pub async fn send_to_gemini(
@@ -156,7 +185,7 @@ pub async fn send_to_gemini(
     spoof_ua: bool,
     jitter: bool,
     proxy_url: Option<&str>,
-) -> Result<String, String> {
+) -> Result<(String, TokenUsage), String> {
     let lang_instruction = match response_language {
         "auto" | "" => String::new(),
         lang => format!("\n\nIMPORTANT: You MUST respond in {lang}."),
@@ -210,11 +239,16 @@ pub async fn send_to_gemini(
     let body: GeminiResponse = serde_json::from_str(&raw)
         .map_err(|e| format!("Failed to parse response: {e}"))?;
 
-    body.candidates
+    let usage = extract_usage(body.usage_metadata);
+
+    let text = body
+        .candidates
         .and_then(|c| c.into_iter().next())
         .and_then(|c| c.content.parts.into_iter().next())
         .map(|p| p.text)
-        .ok_or_else(|| "Empty response from Gemini".to_string())
+        .ok_or_else(|| "Empty response from Gemini".to_string())?;
+
+    Ok((text, usage))
 }
 
 pub async fn send_text_prompt(
@@ -224,7 +258,7 @@ pub async fn send_text_prompt(
     spoof_ua: bool,
     jitter: bool,
     proxy_url: Option<&str>,
-) -> Result<String, String> {
+) -> Result<(String, TokenUsage), String> {
     if jitter {
         network_stealth::apply_jitter().await;
     }
@@ -268,9 +302,14 @@ pub async fn send_text_prompt(
     let body: GeminiResponse = serde_json::from_str(&raw)
         .map_err(|e| format!("Failed to parse response: {e}"))?;
 
-    body.candidates
+    let usage = extract_usage(body.usage_metadata);
+
+    let text = body
+        .candidates
         .and_then(|c| c.into_iter().next())
         .and_then(|c| c.content.parts.into_iter().next())
         .map(|p| p.text)
-        .ok_or_else(|| "Empty response from Gemini".to_string())
+        .ok_or_else(|| "Empty response from Gemini".to_string())?;
+
+    Ok((text, usage))
 }
