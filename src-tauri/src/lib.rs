@@ -303,6 +303,7 @@ pub fn run() {
             commands::ephemeral_paste,
             commands::get_watcher_status,
             commands::toggle_watcher,
+            commands::get_token_usage,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

@@ -281,3 +281,11 @@ pub fn toggle_watcher(app: tauri::AppHandle, state: tauri::State<'_, AppState>) 
         crate::watcher::start_watcher(app);
     }
 }
+
+#[tauri::command]
+pub fn get_token_usage(state: tauri::State<'_, AppState>) -> Vec<crate::usage_db::UsageSummary> {
+    match state.get_usage_db_path() {
+        Some(path) => crate::usage_db::get_usage_summary(&path),
+        None => Vec::new(),
+    }
+}
