@@ -24,6 +24,7 @@ cpal = "0.15"
 whisper-rs = "0.12"
 dirs = "5"
 rand = "0.8"
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
