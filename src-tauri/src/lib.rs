@@ -214,7 +214,7 @@ async fn handle_capture(app: tauri::AppHandle) {
             eprintln!("[phantom] capture: gemini ok, {} chars", response.len());
             state.set_last_response(Some(response.clone()));
             state.set_processing(false);
-            let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "screenshot" }));
+            let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "screenshot", "model": model }));
             if let Some(db_path) = state.get_usage_db_path() {
                 usage_db::record_usage(&db_path, "screenshot", &model, usage.input_tokens, usage.output_tokens);
             }

@@ -449,7 +449,8 @@ pub fn start_watcher(app: tauri::AppHandle) {
                         "capture-response",
                         serde_json::json!({
                             "text": response,
-                            "source": "watcher"
+                            "source": "watcher",
+                            "model": PRO_MODEL
                         }),
                     );
                     // Stop watcher after successful response
