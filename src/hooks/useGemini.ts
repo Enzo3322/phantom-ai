@@ -7,6 +7,7 @@ type GeminiSource = "screenshot" | "transcription" | "watcher" | null;
 interface CaptureResponsePayload {
   text: string;
   source: GeminiSource;
+  model?: string;
 }
 
 export function useGemini() {
@@ -14,6 +15,7 @@ export function useGemini() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<GeminiSource>(null);
+  const [model, setModel] = useState<string | null>(null);
 
   useEffect(() => {
     invoke<boolean>("get_processing_status").then((processing) => {
@@ -43,6 +45,7 @@ export function useGemini() {
         setLoading(false);
         setResponse(event.payload.text);
         setSource(event.payload.source);
+        setModel(event.payload.model ?? null);
         setError(null);
       }),
       listen<string>("capture-error", (event) => {
@@ -61,7 +64,8 @@ export function useGemini() {
     setLoading(false);
     setError(null);
     setSource(null);
+    setModel(null);
   }, []);
 
-  return { response, loading, error, source, clearResponse };
+  return { response, loading, error, source, model, clearResponse };
 }

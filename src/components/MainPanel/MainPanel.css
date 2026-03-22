@@ -169,6 +169,32 @@
   color: #ff3b30;
 }
 
+.main-copy-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+  margin-right: 4px;
+}
+
+.main-copy-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.model-badge {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 500;
+}
+
 /* Recording indicator */
 .rec-dot {
   position: relative;
