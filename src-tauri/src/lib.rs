@@ -173,10 +173,10 @@ async fn handle_capture(app: tauri::AppHandle) {
     eprintln!("[phantom] capture: taking screenshot");
     let capture_result = tokio::task::spawn_blocking(capture::capture_screen).await;
 
-    let base64_image = match capture_result {
-        Ok(Ok(img)) => {
-            eprintln!("[phantom] capture: screenshot ok, {} bytes base64", img.len());
-            img
+    let ocr_text = match capture_result {
+        Ok(Ok(text)) => {
+            eprintln!("[phantom] capture: OCR ok, {} chars", text.len());
+            text
         }
         Ok(Err(e)) => {
             eprintln!("[phantom] capture: screenshot error: {e}");
@@ -208,7 +208,7 @@ async fn handle_capture(app: tauri::AppHandle) {
     let proxy_ref = if proxy.is_empty() { None } else { Some(proxy.as_str()) };
 
     eprintln!("[phantom] capture: calling gemini (model={model})");
-    match gemini::analyze_screenshot(&api_key, &model, &base64_image, &prompt, &response_language, spoof_ua, jitter, proxy_ref).await {
+    match gemini::send_to_gemini(&api_key, &model, &ocr_text, &prompt, &response_language, spoof_ua, jitter, proxy_ref).await {
         Ok((response, usage)) => {
             eprintln!("[phantom] capture: gemini ok, {} chars", response.len());
             state.set_last_response(Some(response.clone()));

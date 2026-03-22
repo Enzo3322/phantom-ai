@@ -17,15 +17,6 @@ enum Part {
     Text {
         text: String,
     },
-    InlineData {
-        inline_data: InlineData,
-    },
-}
-
-#[derive(Serialize)]
-struct InlineData {
-    mime_type: String,
-    data: String,
 }
 
 #[derive(Deserialize)]
@@ -147,35 +138,6 @@ async fn call_gemini(
         .ok_or_else(|| "Empty response from Gemini".to_string())?;
 
     Ok((text, usage))
-}
-
-pub async fn analyze_screenshot(
-    api_key: &str,
-    model: &str,
-    base64_image: &str,
-    prompt: &str,
-    response_language: &str,
-    spoof_ua: bool,
-    jitter: bool,
-    proxy_url: Option<&str>,
-) -> Result<(String, TokenUsage), String> {
-    let lang_instruction = match response_language {
-        "auto" | "" => String::new(),
-        lang => format!("\n\nIMPORTANT: You MUST respond in {lang}."),
-    };
-    let full_prompt = format!("{prompt}{lang_instruction}");
-
-    let parts = vec![
-        Part::InlineData {
-            inline_data: InlineData {
-                mime_type: "image/jpeg".to_string(),
-                data: base64_image.to_string(),
-            },
-        },
-        Part::Text { text: full_prompt },
-    ];
-
-    call_gemini(api_key, model, parts, spoof_ua, jitter, proxy_url).await
 }
 
 pub async fn send_to_gemini(

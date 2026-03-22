@@ -2906,7 +2906,6 @@ dependencies = [
 name = "phantom"
 version = "0.1.0"
 dependencies = [
- "base64 0.22.1",
  "block",
  "cocoa",
  "core-graphics 0.24.0",

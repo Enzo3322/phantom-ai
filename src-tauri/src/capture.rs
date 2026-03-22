@@ -1,11 +1,23 @@
-use base64::{engine::general_purpose::STANDARD, Engine};
 use std::process::Command;
+
+const OCR_SCRIPT: &str = r#"
+import Vision
+import AppKit
+let url = URL(fileURLWithPath: CommandLine.arguments[1])
+guard let image = NSImage(contentsOf: url),
+      let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+else { exit(1) }
+let request = VNRecognizeTextRequest()
+request.recognitionLevel = .accurate
+try VNImageRequestHandler(cgImage: cgImage).perform([request])
+let text = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
+print(text)
+"#;
 
 pub fn capture_screen() -> Result<String, String> {
     let tmp_path = std::env::temp_dir().join("phantom_capture.jpg");
     let tmp_str = tmp_path.to_string_lossy().to_string();
 
-    // Capture as JPEG for smaller payload (text remains legible)
     let output = Command::new("screencapture")
         .args(["-x", "-C", "-t", "jpg", &tmp_str])
         .output()
@@ -16,23 +28,29 @@ pub fn capture_screen() -> Result<String, String> {
         return Err(format!("screencapture failed: {stderr}"));
     }
 
-    // Downscale to 50% with sips — keeps text legible, halves dimensions
-    let _ = Command::new("sips")
-        .args(["--resampleHeightWidthMax", "1440", "-s", "formatOptions", "60", &tmp_str])
-        .output();
-
-    let bytes =
-        std::fs::read(&tmp_path).map_err(|e| format!("Failed to read screenshot file: {e}"))?;
+    let ocr_result = Command::new("swift")
+        .args(["-e", OCR_SCRIPT, &tmp_str])
+        .output()
+        .map_err(|e| format!("Failed to run OCR: {e}"));
 
     let _ = std::fs::remove_file(&tmp_path);
 
-    if bytes.is_empty() {
-        return Err("Screenshot is empty. Check screen recording permission.".to_string());
+    let ocr_output = ocr_result?;
+
+    if !ocr_output.status.success() {
+        let stderr = String::from_utf8_lossy(&ocr_output.stderr);
+        return Err(format!("OCR failed: {stderr}"));
     }
 
-    eprintln!("[phantom] capture: image size {}KB", bytes.len() / 1024);
+    let text = String::from_utf8_lossy(&ocr_output.stdout).trim().to_string();
 
-    Ok(STANDARD.encode(bytes))
+    if text.is_empty() {
+        return Err("OCR extracted no text from screenshot.".to_string());
+    }
+
+    eprintln!("[phantom] capture: OCR extracted {} chars", text.len());
+
+    Ok(text)
 }
 
 #[cfg(target_os = "macos")]
