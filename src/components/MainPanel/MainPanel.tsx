@@ -1,0 +1,334 @@
+import { useRef, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  getCurrentWindow,
+  LogicalSize,
+  LogicalPosition,
+  currentMonitor,
+} from "@tauri-apps/api/window";
+import Markdown from "react-markdown";
+import { LoadingSpinner } from "../shared/LoadingSpinner";
+import { useGemini } from "../../hooks/useGemini";
+import { useRecording } from "../../hooks/useRecording";
+import { useTranscript } from "../../hooks/useTranscript";
+import "./MainPanel.css";
+
+const WIDTH = 380;
+const IDLE_HEIGHT = 48;
+const MAX_HEIGHT = 600;
+const MARGIN = 16;
+
+type Mode = "idle" | "response" | "recording" | "processing" | "error";
+
+export function MainPanel() {
+  const { response, loading: geminiLoading, error: geminiError, source: geminiSource, clearResponse } = useGemini();
+  const { isRecording, toggleRecording, stopRecording } = useRecording();
+  const {
+    transcript,
+    isComplete,
+    error: transcriptionError,
+    clearTranscript,
+  } = useTranscript();
+
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const responseRef = useRef<HTMLDivElement>(null);
+  const screenRef = useRef({ width: 1440, height: 900 });
+
+  const error = geminiError || transcriptionError;
+  const activeError = error && error !== dismissedError ? error : null;
+
+  const mode: Mode = (() => {
+    if (activeError) return "error";
+    if (isRecording) return "recording";
+    if (response) return "response";
+    if (geminiLoading) return "processing";
+    return "idle";
+  })();
+
+  // Cache screen dimensions once on mount
+  useEffect(() => {
+    currentMonitor().then((monitor) => {
+      if (monitor) {
+        screenRef.current = {
+          width: monitor.size.width / monitor.scaleFactor,
+          height: monitor.size.height / monitor.scaleFactor,
+        };
+      }
+    });
+  }, []);
+
+  // Resize based on mode
+  useEffect(() => {
+    const { width: screenWidth, height: screenHeight } = screenRef.current;
+    const win = getCurrentWindow();
+
+    let height: number;
+    if (mode === "recording") {
+      height = 400;
+    } else if (mode === "response") {
+      height = transcript
+        ? screenHeight - MARGIN * 2
+        : Math.min(MAX_HEIGHT, screenHeight - MARGIN * 2);
+    } else if (mode === "processing") {
+      height = 120;
+    } else {
+      height = IDLE_HEIGHT;
+    }
+
+    win.setSize(new LogicalSize(WIDTH, height));
+    win.setPosition(
+      new LogicalPosition(screenWidth - WIDTH - MARGIN, MARGIN)
+    );
+  }, [mode, transcript]);
+
+  // Clear stale Gemini response when a new recording starts
+  useEffect(() => {
+    if (isRecording) {
+      clearResponse();
+    }
+  }, [isRecording, clearResponse]);
+
+  // Auto-send to Gemini ONLY after transcription is fully complete
+  useEffect(() => {
+    if (isComplete && !isRecording && transcript.trim()) {
+      invoke("send_transcription_to_gemini", {
+        text: transcript,
+        prompt: "Analyze the following audio transcription and provide a helpful response.",
+      }).catch((e) => console.error("Auto-send to Gemini failed:", e));
+    }
+  }, [isComplete, isRecording, transcript]);
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [transcript]);
+
+  // Auto-scroll response
+  useEffect(() => {
+    if (responseRef.current) {
+      responseRef.current.scrollTop = responseRef.current.scrollHeight;
+    }
+  }, [response]);
+
+  const handleToggleRecording = async () => {
+    try {
+      await toggleRecording();
+    } catch (e) {
+      console.error("Toggle recording failed:", e);
+    }
+  };
+
+  const handleClear = async () => {
+    if (isRecording) {
+      await stopRecording();
+    }
+    clearTranscript();
+    clearResponse();
+  };
+
+  const handleOpenSettings = async () => {
+    try {
+      await invoke("open_settings");
+    } catch (e) {
+      console.error("Open settings failed:", e);
+    }
+  };
+
+  // --- IDLE ---
+  if (mode === "idle") {
+    return (
+      <div className="main-panel">
+        <div className="main-idle-bar" data-tauri-drag-region>
+          <div className="main-idle-left">
+            <svg
+              className="main-idle-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"
+                strokeLinecap="round"
+              />
+              <path d="M9 9h.01M15 9h.01" strokeLinecap="round" />
+              <path
+                d="M8 13c1 2 3 3 4 3s3-1 4-3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="main-idle-text">Phantom</span>
+          </div>
+          <div className="main-idle-right">
+            <button className="main-settings-btn" onClick={handleOpenSettings}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- ERROR ---
+  if (mode === "error") {
+    return (
+      <div className="main-panel">
+        <div className="main-titlebar" data-tauri-drag-region>
+          <div className="main-title-left">
+            <svg className="main-title-icon error-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+            <span className="main-title">Error</span>
+          </div>
+          <button className="main-close-btn" onClick={() => {
+            setDismissedError(activeError);
+          }}>
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div className="main-body">
+          <div className="main-error">
+            <p>{activeError}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RECORDING ---
+  if (mode === "recording") {
+    return (
+      <div className="main-panel">
+        <div className="main-titlebar" data-tauri-drag-region>
+          <div className="main-title-left">
+            <span className="rec-dot" />
+            <span className="main-title">Recording...</span>
+          </div>
+          <div className="main-title-right">
+            <button
+              className="rec-toggle-btn recording"
+              onClick={handleToggleRecording}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
+              Stop
+            </button>
+          </div>
+        </div>
+        <div className="main-body" ref={scrollRef}>
+          {transcript ? (
+            <div className="main-transcript">{transcript}</div>
+          ) : (
+            <div className="main-listening">
+              <LoadingSpinner />
+              <span>Listening...</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- PROCESSING ---
+  if (mode === "processing") {
+    return (
+      <div className="main-panel">
+        <div className="main-titlebar" data-tauri-drag-region>
+          <div className="main-title-left">
+            <svg
+              className="main-title-icon brain-icon"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9.5 2a3.5 3.5 0 0 0-3.4 4.4A3.5 3.5 0 0 0 4 10a3.5 3.5 0 0 0 1.8 3.1A3.5 3.5 0 0 0 7 17a3.5 3.5 0 0 0 3.5 3.5c.8 0 1.5-.2 2.1-.6" />
+              <path d="M14.5 2a3.5 3.5 0 0 1 3.4 4.4A3.5 3.5 0 0 1 20 10a3.5 3.5 0 0 1-1.8 3.1A3.5 3.5 0 0 1 17 17a3.5 3.5 0 0 1-3.5 3.5c-.8 0-1.5-.2-2.1-.6" />
+              <path d="M12 2v20" />
+            </svg>
+            <span className="main-title">
+              {geminiSource === "screenshot" ? "Analyzing screenshot..." : "Thinking..."}
+            </span>
+          </div>
+        </div>
+        <div className="main-body main-processing-body">
+          <div className="brain-loading">
+            <svg
+              className="brain-loading-icon"
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9.5 2a3.5 3.5 0 0 0-3.4 4.4A3.5 3.5 0 0 0 4 10a3.5 3.5 0 0 0 1.8 3.1A3.5 3.5 0 0 0 7 17a3.5 3.5 0 0 0 3.5 3.5c.8 0 1.5-.2 2.1-.6" />
+              <path d="M14.5 2a3.5 3.5 0 0 1 3.4 4.4A3.5 3.5 0 0 1 20 10a3.5 3.5 0 0 1-1.8 3.1A3.5 3.5 0 0 1 17 17a3.5 3.5 0 0 1-3.5 3.5c-.8 0-1.5-.2-2.1-.6" />
+              <path d="M12 2v20" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RESPONSE ---
+  const responseLabel = geminiSource === "screenshot" ? "Screenshot" : "Response";
+
+  return (
+    <div className="main-panel">
+      <div className="main-titlebar" data-tauri-drag-region>
+        <div className="main-title-left">
+          {geminiSource === "screenshot" ? (
+            <svg className="main-title-icon screenshot-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+          ) : (
+            <svg className="main-title-icon sparkle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          )}
+          <span className="main-title">{responseLabel}</span>
+        </div>
+        <div className="main-title-right">
+          <button className="main-close-btn" onClick={handleClear}>
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      {transcript && (
+        <>
+          <div className="main-body" ref={scrollRef}>
+            <div className="main-transcript">{transcript}</div>
+          </div>
+          <div className="main-response-divider" />
+        </>
+      )}
+      <div className={transcript ? "main-response-area" : "main-body"} ref={responseRef}>
+        <div className="markdown-body">
+          <Markdown>{response}</Markdown>
+        </div>
+      </div>
+    </div>
+  );
+}

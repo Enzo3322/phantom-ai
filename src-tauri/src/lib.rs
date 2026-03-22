@@ -2,34 +2,45 @@ mod audio;
 mod capture;
 mod commands;
 mod gemini;
+mod hallucination;
+mod recording;
 mod state;
 mod stealth;
+mod vad;
 mod whisper;
 
 use state::AppState;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, ShortcutState};
+#[cfg(target_os = "macos")]
+use objc::{msg_send, sel, sel_impl};
 
 pub fn create_panel(app: &tauri::AppHandle, label: &str) {
     let (width, height) = match label {
         "config" => (460.0, 520.0),
-        "response" => (380.0, 160.0),
-        "transcription" => (420.0, 400.0),
+        "main" => (380.0, 48.0),
+        "welcome" => (500.0, 480.0),
         _ => (400.0, 400.0),
     };
 
-    let resizable = matches!(label, "response" | "transcription");
+    let resizable = matches!(label, "main");
+    let always_on_top = label != "welcome";
 
-    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+    let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
         .title("")
         .inner_size(width, height)
         .decorations(false)
         .transparent(true)
         .skip_taskbar(true)
-        .always_on_top(true)
+        .always_on_top(always_on_top)
         .visible(true)
-        .resizable(resizable)
-        .build();
+        .resizable(resizable);
+
+    if label == "welcome" {
+        builder = builder.center();
+    }
+
+    let window = builder.build();
 
     if let Ok(window) = window {
         let stealth_enabled = app.state::<AppState>().get_stealth_mode();
@@ -37,34 +48,51 @@ pub fn create_panel(app: &tauri::AppHandle, label: &str) {
     }
 }
 
-fn toggle_window(app: &tauri::AppHandle, label: &str) {
+pub fn toggle_window(app: &tauri::AppHandle, label: &str) {
     if let Some(window) = app.get_webview_window(label) {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
         } else {
+            activate_app();
             let _ = window.show();
             let _ = window.set_focus();
         }
     } else {
+        activate_app();
         create_panel(app, label);
     }
 }
 
-fn show_window_no_focus(app: &tauri::AppHandle, label: &str) {
+fn show_window(app: &tauri::AppHandle, label: &str) {
+    activate_app();
     if let Some(window) = app.get_webview_window(label) {
         let _ = window.show();
+        let _ = window.set_focus();
     } else {
         create_panel(app, label);
     }
 }
 
 fn hide_all_windows(app: &tauri::AppHandle) {
-    for label in &["config", "response", "transcription"] {
-        if let Some(window) = app.get_webview_window(label) {
-            let _ = window.hide();
-        }
+    // Only hide config panel during capture.
+    // Main panel stays alive — stealth mode makes it invisible to screenshots,
+    // and hiding it in macOS accessory mode makes it impossible to show again.
+    if let Some(window) = app.get_webview_window("config") {
+        let _ = window.hide();
     }
 }
+
+#[cfg(target_os = "macos")]
+fn activate_app() {
+    use cocoa::appkit::NSApp;
+    unsafe {
+        let app = NSApp();
+        let _: () = msg_send![app, activateIgnoringOtherApps: true];
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn activate_app() {}
 
 async fn run_on_main<F: FnOnce() + Send + 'static>(app: &tauri::AppHandle, f: F) {
     let _ = app.run_on_main_thread(f);
@@ -83,18 +111,19 @@ async fn handle_capture(app: tauri::AppHandle) {
     let api_key = state.get_api_key();
     if api_key.is_empty() {
         let app_clone = app.clone();
-        run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
+        run_on_main(&app, move || show_window(&app_clone, "main")).await;
         let _ = app.emit("capture-error", "API key not configured. Press Cmd+Shift+C to open settings.");
         return;
     }
 
     let model = state.get_model();
     let prompt = state.get_prompt();
+    let response_language = state.get_response_language();
 
     eprintln!("[phantom] capture: checking permission");
     if !capture::check_screen_permission() {
         let app_clone = app.clone();
-        run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
+        run_on_main(&app, move || show_window(&app_clone, "main")).await;
         let _ = app.emit("capture-error", "Screen recording permission required.");
         return;
     }
@@ -115,7 +144,7 @@ async fn handle_capture(app: tauri::AppHandle) {
             state.set_processing(false);
             state.set_last_response(Some(format!("Error: {e}")));
             let app_clone = app.clone();
-            run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
+            run_on_main(&app, move || show_window(&app_clone, "main")).await;
             return;
         }
         Err(e) => {
@@ -123,24 +152,24 @@ async fn handle_capture(app: tauri::AppHandle) {
             state.set_processing(false);
             state.set_last_response(Some(format!("Error: {e}")));
             let app_clone = app.clone();
-            run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
+            run_on_main(&app, move || show_window(&app_clone, "main")).await;
             return;
         }
     };
 
     eprintln!("[phantom] capture: showing response panel");
     let app_clone = app.clone();
-    run_on_main(&app, move || show_window_no_focus(&app_clone, "response")).await;
+    run_on_main(&app, move || show_window(&app_clone, "main")).await;
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    let _ = app.emit("processing-start", ());
+    let _ = app.emit("processing-start", "screenshot");
 
     eprintln!("[phantom] capture: calling gemini (model={model})");
-    match gemini::analyze_screenshot(&api_key, &model, &base64_image, &prompt).await {
+    match gemini::analyze_screenshot(&api_key, &model, &base64_image, &prompt, &response_language).await {
         Ok(response) => {
             eprintln!("[phantom] capture: gemini ok, {} chars", response.len());
             state.set_last_response(Some(response.clone()));
             state.set_processing(false);
-            let _ = app.emit("capture-response", response);
+            let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "screenshot" }));
         }
         Err(e) => {
             eprintln!("[phantom] capture: gemini error: {e}");
@@ -154,67 +183,15 @@ async fn handle_capture(app: tauri::AppHandle) {
 
 async fn handle_toggle_recording(app: tauri::AppHandle) {
     let state = app.state::<AppState>();
-    let is_recording = state.get_recording();
 
-    if is_recording {
-        // Stop recording
-        let tx = state.recording_stop_tx.lock().unwrap_or_else(|e| e.into_inner()).take();
-        if let Some(tx) = tx {
-            let _ = tx.send(());
-        }
-        state.set_recording(false);
-        let _ = app.emit("recording-stopped", ());
-        eprintln!("[phantom] recording stopped via shortcut");
+    if state.get_recording() {
+        let _ = recording::stop(&app);
     } else {
-        // Show transcription panel and start recording
         let app_clone = app.clone();
-        run_on_main(&app, move || show_window_no_focus(&app_clone, "transcription")).await;
+        run_on_main(&app, move || show_window(&app_clone, "main")).await;
 
-        let model_size = state.get_whisper_model_size();
-        let language = state.get_whisper_language();
-        let source_str = state.get_audio_source();
-        let vocab_seed = state.get_vocab_seed();
-        let source = audio::AudioSource::from_str(&source_str);
-
-        eprintln!("[phantom] recording config: model={model_size}, language={language}, source={source_str}, vocab_seed_len={}", vocab_seed.len());
-
-        state.set_recording(true);
-        state.set_transcription_text(String::new());
-
-        let (audio_tx, audio_rx) = std::sync::mpsc::channel();
-
-        let stop_flag = std::sync::Arc::new(
-            std::sync::atomic::AtomicBool::new(false),
-        );
-
-        match audio::start_capture(source, audio_tx, stop_flag.clone()) {
-            Ok(()) => {
-                let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
-                *state.recording_stop_tx.lock().unwrap_or_else(|e| e.into_inner()) = Some(stop_tx);
-
-                let flag_clone = stop_flag.clone();
-                std::thread::spawn(move || {
-                    let _ = stop_rx.recv();
-                    flag_clone.store(true, std::sync::atomic::Ordering::Relaxed);
-                });
-
-                whisper::start_transcription(
-                    app.clone(),
-                    audio_rx,
-                    stop_flag,
-                    model_size,
-                    language,
-                    vocab_seed,
-                );
-
-                let _ = app.emit("recording-started", ());
-                eprintln!("[phantom] recording started via shortcut");
-            }
-            Err(e) => {
-                state.set_recording(false);
-                let _ = app.emit("transcription-error", format!("Failed to start recording: {e}"));
-                eprintln!("[phantom] recording start failed: {e}");
-            }
+        if let Err(e) = recording::start(&app) {
+            let _ = app.emit("transcription-error", e);
         }
     }
 }
@@ -238,15 +215,11 @@ pub fn run() {
                         });
                     } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyC) {
                         toggle_window(app, "config");
-                    } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyA) {
-                        toggle_window(app, "response");
                     } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyM) {
                         let handle = app.clone();
                         tauri::async_runtime::spawn(async move {
                             handle_toggle_recording(handle).await;
                         });
-                    } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyT) {
-                        toggle_window(app, "transcription");
                     }
                 })
                 .build(),
@@ -265,6 +238,10 @@ pub fn run() {
             commands::download_whisper_model,
             commands::get_available_models,
             commands::send_transcription_to_gemini,
+            commands::open_settings,
+            commands::complete_onboarding,
+            commands::get_onboarding_status,
+            commands::open_external_url,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -273,9 +250,7 @@ pub fn run() {
             let shortcuts = [
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyS),
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyC),
-                (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyA),
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyM),
-                (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyT),
             ];
 
             for (modifiers, code) in &shortcuts {
@@ -286,10 +261,17 @@ pub fn run() {
                 app.global_shortcut().register(shortcut)?;
             }
 
+            // Load config synchronously so we can decide which window to show
             let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                load_config_from_store(&handle);
-            });
+            load_config_from_store(&handle);
+
+            // Show welcome or main panel based on onboarding status
+            let state = handle.state::<AppState>();
+            if !state.get_has_onboarded() || state.get_api_key().is_empty() {
+                create_panel(&handle, "welcome");
+            } else {
+                create_panel(&handle, "main");
+            }
 
             Ok(())
         })
@@ -347,6 +329,16 @@ fn load_config_from_store(app: &tauri::AppHandle) {
         if let Some(val) = store.get("vocab_seed") {
             if let Some(s) = val.as_str() {
                 state.set_vocab_seed(s.to_string());
+            }
+        }
+        if let Some(val) = store.get("response_language") {
+            if let Some(s) = val.as_str() {
+                state.set_response_language(s.to_string());
+            }
+        }
+        if let Some(val) = store.get("has_onboarded") {
+            if let Some(b) = val.as_bool() {
+                state.set_has_onboarded(b);
             }
         }
 

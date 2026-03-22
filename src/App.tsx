@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { ConfigPanel } from "./components/ConfigPanel/ConfigPanel";
-import { ResponsePanel } from "./components/ResponsePanel/ResponsePanel";
-import { TranscriptionPanel } from "./components/TranscriptionPanel/TranscriptionPanel";
+import { MainPanel } from "./components/MainPanel/MainPanel";
+import { WelcomePanel } from "./components/WelcomePanel/WelcomePanel";
 
 function App() {
   const label = getCurrentWindow().label;
@@ -15,8 +15,8 @@ function App() {
   }, []);
 
   if (label === "config") return <ConfigPanel />;
-  if (label === "response") return <ResponsePanel />;
-  if (label === "transcription") return <TranscriptionPanel />;
+  if (label === "main") return <MainPanel />;
+  if (label === "welcome") return <WelcomePanel />;
 
   return null;
 }

@@ -14,7 +14,8 @@ pub struct AppState {
     pub whisper_language: Mutex<String>,
     pub audio_source: Mutex<String>,
     pub vocab_seed: Mutex<String>,
-    pub recording_stop_tx: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    pub response_language: Mutex<String>,
+    pub has_onboarded: Mutex<bool>,
 }
 
 impl AppState {
@@ -121,6 +122,22 @@ impl AppState {
     pub fn set_vocab_seed(&self, val: String) {
         *self.vocab_seed.lock().unwrap_or_else(|e| e.into_inner()) = val;
     }
+
+    pub fn get_response_language(&self) -> String {
+        self.response_language.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    pub fn set_response_language(&self, val: String) {
+        *self.response_language.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
+
+    pub fn get_has_onboarded(&self) -> bool {
+        *self.has_onboarded.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub fn set_has_onboarded(&self, val: bool) {
+        *self.has_onboarded.lock().unwrap_or_else(|e| e.into_inner()) = val;
+    }
 }
 
 impl Default for AppState {
@@ -142,7 +159,8 @@ impl Default for AppState {
             whisper_language: Mutex::new("auto".to_string()),
             audio_source: Mutex::new("both".to_string()),
             vocab_seed: Mutex::new(String::new()),
-            recording_stop_tx: Mutex::new(None),
+            response_language: Mutex::new("auto".to_string()),
+            has_onboarded: Mutex::new(false),
         }
     }
 }

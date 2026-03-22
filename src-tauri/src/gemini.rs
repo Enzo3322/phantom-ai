@@ -46,11 +46,13 @@ struct Candidate {
 
 #[derive(Deserialize)]
 struct CandidateContent {
+    #[serde(default)]
     parts: Vec<ResponsePart>,
 }
 
 #[derive(Deserialize)]
 struct ResponsePart {
+    #[serde(default)]
     text: String,
 }
 
@@ -59,7 +61,14 @@ pub async fn analyze_screenshot(
     model: &str,
     base64_image: &str,
     prompt: &str,
+    response_language: &str,
 ) -> Result<String, String> {
+    let lang_instruction = match response_language {
+        "auto" | "" => String::new(),
+        lang => format!("\n\nIMPORTANT: You MUST respond in {lang}."),
+    };
+    let full_prompt = format!("{prompt}{lang_instruction}");
+
     let client = Client::new();
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
@@ -76,7 +85,7 @@ pub async fn analyze_screenshot(
                     },
                 },
                 Part::Text {
-                    text: prompt.to_string(),
+                    text: full_prompt,
                 },
             ],
         }],
@@ -124,4 +133,62 @@ pub async fn analyze_screenshot(
     }
 
     Ok(result)
+}
+
+pub async fn send_to_gemini(
+    api_key: &str,
+    model: &str,
+    text: &str,
+    prompt: &str,
+    response_language: &str,
+) -> Result<String, String> {
+    let lang_instruction = match response_language {
+        "auto" | "" => String::new(),
+        lang => format!("\n\nIMPORTANT: You MUST respond in {lang}."),
+    };
+    let full_prompt = format!("{prompt}{lang_instruction}\n\nTranscription:\n{text}");
+
+    let client = Client::new();
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+        model, api_key
+    );
+
+    let request = GeminiRequest {
+        contents: vec![Content {
+            parts: vec![Part::Text {
+                text: full_prompt,
+            }],
+        }],
+    };
+
+    let response = client
+        .post(&url)
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let status = response.status();
+    let raw = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {e}"))?;
+
+    if !status.is_success() {
+        return Err(format!(
+            "Gemini API error ({}): {}",
+            status,
+            &raw[..raw.len().min(300)]
+        ));
+    }
+
+    let body: GeminiResponse = serde_json::from_str(&raw)
+        .map_err(|e| format!("Failed to parse response: {e}"))?;
+
+    body.candidates
+        .and_then(|c| c.into_iter().next())
+        .and_then(|c| c.content.parts.into_iter().next())
+        .map(|p| p.text)
+        .ok_or_else(|| "Empty response from Gemini".to_string())
 }

@@ -16,6 +16,30 @@
   pointer-events: none;
 }
 
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auto-saved-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-success);
+  font-weight: 500;
+  opacity: 1;
+  animation: fadeInOut 1.5s ease forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .close-btn {
   width: 24px;
   height: 24px;
@@ -55,6 +79,19 @@
   padding: 10px 0;
   cursor: pointer;
   transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tab-icon {
+  opacity: 0.7;
+  transition: opacity var(--transition);
+}
+
+.tab-btn.active .tab-icon {
+  opacity: 1;
 }
 
 .tab-btn:hover {
@@ -71,6 +108,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  animation: fadeSlideIn 0.2s ease;
 }
 
 .field {
@@ -85,6 +123,25 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-icon {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .input-row {
@@ -188,25 +245,77 @@ textarea {
   color: var(--text-primary);
 }
 
-.shortcuts {
+.shortcuts-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  background: var(--bg-input);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-input);
 }
 
 .shortcut-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
 }
 
-.shortcut-label {
-  font-size: 13px;
+.shortcut-row:hover {
+  background: var(--bg-input-hover);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.shortcut-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.shortcut-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.shortcut-icon.capture {
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--text-accent);
+}
+
+.shortcut-icon.record {
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+}
+
+.shortcut-icon.settings {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
+}
+
+.shortcut-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.shortcut-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shortcut-desc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 400;
 }
 
 kbd {
@@ -318,25 +427,3 @@ kbd {
   flex: 1;
 }
 
-.save-btn {
-  background: var(--bg-button);
-  border: none;
-  border-radius: var(--radius-sm);
-  color: white;
-  font-family: var(--font);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 12px;
-  cursor: pointer;
-  transition: all var(--transition);
-  margin-top: auto;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: var(--bg-button-hover);
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}

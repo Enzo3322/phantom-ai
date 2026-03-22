@@ -37,6 +37,19 @@ const MODELS = [
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1" },
 ];
 
+const RESPONSE_LANGUAGES = [
+  { value: "auto", label: "Auto (match input)" },
+  { value: "English", label: "English" },
+  { value: "Portuguese", label: "Portuguese" },
+  { value: "Spanish", label: "Spanish" },
+  { value: "French", label: "French" },
+  { value: "German", label: "German" },
+  { value: "Italian", label: "Italian" },
+  { value: "Japanese", label: "Japanese" },
+  { value: "Korean", label: "Korean" },
+  { value: "Chinese", label: "Chinese" },
+];
+
 const WHISPER_LANGUAGES = [
   { value: "auto", label: "Auto Detect" },
   { value: "en", label: "English" },
@@ -90,25 +103,17 @@ const VOCAB_PRESETS = [
 type Tab = "general" | "audio" | "shortcuts";
 
 export function ConfigPanel() {
-  const { config, save, saving, saved } = useConfig();
+  const { config, updateConfig, autoSaved } = useConfig();
   const { models, downloading, downloadModel } = useWhisperModel();
   const [activeTab, setActiveTab] = useState<Tab>("general");
-  const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gemini-2.0-flash");
-  const [prompt, setPrompt] = useState("");
-  const [opacity, setOpacity] = useState(0.85);
-  const [stealthMode, setStealthMode] = useState(true);
-  const [whisperModelSize, setWhisperModelSize] = useState("base");
-  const [whisperLanguage, setWhisperLanguage] = useState("auto");
-  const [audioSource, setAudioSource] = useState("both");
-  const [vocabSeed, setVocabSeed] = useState("");
   const [showKey, setShowKey] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const resizeToFit = useCallback(async () => {
     if (!panelRef.current) return;
     await new Promise((r) => requestAnimationFrame(r));
-    const height = panelRef.current.scrollHeight;
+    await new Promise((r) => requestAnimationFrame(r));
+    const height = panelRef.current.scrollHeight + 2;
     await getCurrentWindow().setSize(new LogicalSize(WIDTH, height));
   }, []);
 
@@ -116,55 +121,67 @@ export function ConfigPanel() {
     resizeToFit();
   }, [resizeToFit, activeTab]);
 
-  useEffect(() => {
-    setApiKey(config.api_key);
-    setModel(config.model);
-    setPrompt(config.prompt);
-    setOpacity(config.opacity);
-    setStealthMode(config.stealth_mode);
-    setWhisperModelSize(config.whisper_model_size);
-    setWhisperLanguage(config.whisper_language);
-    setAudioSource(config.audio_source);
-    setVocabSeed(config.vocab_seed);
-  }, [config]);
-
   const handleOpacityChange = (val: number) => {
-    setOpacity(val);
     document.documentElement.style.setProperty("--bg-opacity", String(val));
-  };
-
-  const handleSave = () => {
-    save({
-      api_key: apiKey,
-      model,
-      prompt,
-      opacity,
-      stealth_mode: stealthMode,
-      whisper_model_size: whisperModelSize,
-      whisper_language: whisperLanguage,
-      audio_source: audioSource,
-      vocab_seed: vocabSeed,
-    });
+    updateConfig({ opacity: val });
   };
 
   const handleClose = () => {
     getCurrentWindow().hide();
   };
 
+  const handleVocabToggle = (preset: typeof VOCAB_PRESETS[number]) => {
+    const isActive = preset.seed
+      .split(", ")
+      .some((term) => config.vocab_seed.includes(term));
+
+    if (isActive) {
+      const presetTerms = new Set(preset.seed.split(", "));
+      const remaining = config.vocab_seed
+        .split(", ")
+        .filter((t) => t.trim() && !presetTerms.has(t.trim()))
+        .join(", ");
+      updateConfig({ vocab_seed: remaining });
+    } else {
+      const combined = config.vocab_seed
+        ? `${config.vocab_seed}, ${preset.seed}`
+        : preset.seed;
+      const unique = [
+        ...new Set(
+          combined
+            .split(", ")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        ),
+      ];
+      updateConfig({ vocab_seed: unique.join(", ") });
+    }
+  };
+
   return (
     <GlassContainer ref={panelRef}>
       <div className="titlebar" data-tauri-drag-region>
         <span className="titlebar-title">Phantom Settings</span>
-        <button className="close-btn" onClick={handleClose}>
-          <svg width="10" height="10" viewBox="0 0 10 10">
-            <path
-              d="M1 1L9 9M9 1L1 9"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+        <div className="titlebar-right">
+          {autoSaved && (
+            <span className="auto-saved-indicator">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Saved
+            </span>
+          )}
+          <button className="close-btn" onClick={handleClose}>
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path
+                d="M1 1L9 9M9 1L1 9"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="tab-bar">
@@ -172,18 +189,38 @@ export function ConfigPanel() {
           className={`tab-btn ${activeTab === "general" ? "active" : ""}`}
           onClick={() => setActiveTab("general")}
         >
+          <svg className="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
           General
         </button>
         <button
           className={`tab-btn ${activeTab === "audio" ? "active" : ""}`}
           onClick={() => setActiveTab("audio")}
         >
+          <svg className="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
+          </svg>
           Audio
         </button>
         <button
           className={`tab-btn ${activeTab === "shortcuts" ? "active" : ""}`}
           onClick={() => setActiveTab("shortcuts")}
         >
+          <svg className="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <line x1="6" y1="8" x2="6.01" y2="8" />
+            <line x1="10" y1="8" x2="10.01" y2="8" />
+            <line x1="14" y1="8" x2="14.01" y2="8" />
+            <line x1="18" y1="8" x2="18.01" y2="8" />
+            <line x1="6" y1="12" x2="6.01" y2="12" />
+            <line x1="18" y1="12" x2="18.01" y2="12" />
+            <line x1="8" y1="16" x2="16" y2="16" />
+          </svg>
           Shortcuts
         </button>
       </div>
@@ -192,12 +229,15 @@ export function ConfigPanel() {
         {activeTab === "general" && (
           <>
             <div className="field">
-              <label>API Key</label>
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>
+                API Key
+              </label>
               <div className="input-row">
                 <input
                   type={showKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  value={config.api_key}
+                  onChange={(e) => updateConfig({ api_key: e.target.value })}
                   placeholder="Enter your Gemini API key"
                   spellCheck={false}
                 />
@@ -211,8 +251,14 @@ export function ConfigPanel() {
             </div>
 
             <div className="field">
-              <label>Model</label>
-              <select value={model} onChange={(e) => setModel(e.target.value)}>
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                Model
+              </label>
+              <select
+                value={config.model}
+                onChange={(e) => updateConfig({ model: e.target.value })}
+              >
                 {MODELS.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
@@ -222,21 +268,41 @@ export function ConfigPanel() {
             </div>
 
             <div className="field">
-              <label>Prompt</label>
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                Response Language
+              </label>
+              <select
+                value={config.response_language}
+                onChange={(e) => updateConfig({ response_language: e.target.value })}
+              >
+                {RESPONSE_LANGUAGES.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                Prompt
+              </label>
               <div className="quick-prompts">
                 {QUICK_PROMPTS.map((qp) => (
                   <button
                     key={qp.label}
-                    className={`quick-prompt-btn ${prompt === qp.prompt ? "active" : ""}`}
-                    onClick={() => setPrompt(qp.prompt)}
+                    className={`quick-prompt-btn ${config.prompt === qp.prompt ? "active" : ""}`}
+                    onClick={() => updateConfig({ prompt: qp.prompt })}
                   >
                     {qp.label}
                   </button>
                 ))}
               </div>
               <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                value={config.prompt}
+                onChange={(e) => updateConfig({ prompt: e.target.value })}
                 rows={3}
                 placeholder="Instructions sent with each screenshot"
                 spellCheck={false}
@@ -245,15 +311,18 @@ export function ConfigPanel() {
 
             <div className="field">
               <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                 Opacity
-                <span className="opacity-value">{Math.round(opacity * 100)}%</span>
+                <span className="opacity-value">
+                  {Math.round(config.opacity * 100)}%
+                </span>
               </label>
               <input
                 type="range"
                 min="0.1"
                 max="1"
                 step="0.05"
-                value={opacity}
+                value={config.opacity}
                 onChange={(e) => handleOpacityChange(Number(e.target.value))}
                 className="opacity-slider"
               />
@@ -263,11 +332,15 @@ export function ConfigPanel() {
               <div className="stealth-row">
                 <div className="stealth-info">
                   <label>Stealth Mode</label>
-                  <span className="stealth-desc">Hide window from screenshots and recordings</span>
+                  <span className="stealth-desc">
+                    Hide window from screenshots and recordings
+                  </span>
                 </div>
                 <button
-                  className={`stealth-toggle ${stealthMode ? "active" : ""}`}
-                  onClick={() => setStealthMode(!stealthMode)}
+                  className={`stealth-toggle ${config.stealth_mode ? "active" : ""}`}
+                  onClick={() =>
+                    updateConfig({ stealth_mode: !config.stealth_mode })
+                  }
                 >
                   <span className="stealth-toggle-knob" />
                 </button>
@@ -279,11 +352,16 @@ export function ConfigPanel() {
         {activeTab === "audio" && (
           <>
             <div className="field">
-              <label>Whisper Model</label>
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /><rect x="9" y="9" width="6" height="6" /><line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" /><line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" /><line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" /><line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" /></svg>
+                Whisper Model
+              </label>
               <div className="whisper-model-row">
                 <select
-                  value={whisperModelSize}
-                  onChange={(e) => setWhisperModelSize(e.target.value)}
+                  value={config.whisper_model_size}
+                  onChange={(e) =>
+                    updateConfig({ whisper_model_size: e.target.value })
+                  }
                 >
                   {models.map((m) => (
                     <option key={m.size} value={m.size}>
@@ -299,23 +377,32 @@ export function ConfigPanel() {
                     </>
                   )}
                 </select>
-                {models.find((m) => m.size === whisperModelSize && !m.downloaded) && (
+                {models.find(
+                  (m) => m.size === config.whisper_model_size && !m.downloaded
+                ) && (
                   <button
                     className="toggle-btn"
-                    onClick={() => downloadModel(whisperModelSize)}
+                    onClick={() => downloadModel(config.whisper_model_size)}
                     disabled={downloading !== null}
                   >
-                    {downloading === whisperModelSize ? "Downloading..." : "Download"}
+                    {downloading === config.whisper_model_size
+                      ? "Downloading..."
+                      : "Download"}
                   </button>
                 )}
               </div>
             </div>
 
             <div className="field">
-              <label>Transcription Language</label>
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                Transcription Language
+              </label>
               <select
-                value={whisperLanguage}
-                onChange={(e) => setWhisperLanguage(e.target.value)}
+                value={config.whisper_language}
+                onChange={(e) =>
+                  updateConfig({ whisper_language: e.target.value })
+                }
               >
                 {WHISPER_LANGUAGES.map((l) => (
                   <option key={l.value} value={l.value}>
@@ -326,10 +413,15 @@ export function ConfigPanel() {
             </div>
 
             <div className="field">
-              <label>Audio Source</label>
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
+                Audio Source
+              </label>
               <select
-                value={audioSource}
-                onChange={(e) => setAudioSource(e.target.value)}
+                value={config.audio_source}
+                onChange={(e) =>
+                  updateConfig({ audio_source: e.target.value })
+                }
               >
                 {AUDIO_SOURCES.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -340,35 +432,20 @@ export function ConfigPanel() {
             </div>
 
             <div className="field">
-              <label>Vocabulary Context</label>
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                Vocabulary Context
+              </label>
               <div className="quick-prompts">
                 {VOCAB_PRESETS.map((vp) => {
-                  const isActive = vp.seed.split(", ").some((term) =>
-                    vocabSeed.includes(term)
-                  );
+                  const isActive = vp.seed
+                    .split(", ")
+                    .some((term) => config.vocab_seed.includes(term));
                   return (
                     <button
                       key={vp.label}
                       className={`quick-prompt-btn ${isActive ? "active" : ""}`}
-                      onClick={() => {
-                        if (isActive) {
-                          // Remove this preset's terms
-                          const presetTerms = new Set(vp.seed.split(", "));
-                          const remaining = vocabSeed
-                            .split(", ")
-                            .filter((t) => t.trim() && !presetTerms.has(t.trim()))
-                            .join(", ");
-                          setVocabSeed(remaining);
-                        } else {
-                          // Add this preset's terms
-                          const combined = vocabSeed
-                            ? `${vocabSeed}, ${vp.seed}`
-                            : vp.seed;
-                          // Deduplicate
-                          const unique = [...new Set(combined.split(", ").map((t) => t.trim()).filter(Boolean))];
-                          setVocabSeed(unique.join(", "));
-                        }
-                      }}
+                      onClick={() => handleVocabToggle(vp)}
                     >
                       {vp.label}
                     </button>
@@ -376,8 +453,8 @@ export function ConfigPanel() {
                 })}
               </div>
               <textarea
-                value={vocabSeed}
-                onChange={(e) => setVocabSeed(e.target.value)}
+                value={config.vocab_seed}
+                onChange={(e) => updateConfig({ vocab_seed: e.target.value })}
                 rows={3}
                 placeholder="Technical terms to help transcription accuracy (e.g., Node.js, árvore binária, API)"
                 spellCheck={false}
@@ -388,39 +465,57 @@ export function ConfigPanel() {
 
         {activeTab === "shortcuts" && (
           <div className="field">
-            <div className="shortcuts">
+            <div className="shortcuts-list">
               <div className="shortcut-row">
-                <span className="shortcut-label">Capture & Analyze</span>
+                <div className="shortcut-left">
+                  <span className="shortcut-icon capture">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </span>
+                  <div className="shortcut-info">
+                    <span className="shortcut-name">Capture & Analyze</span>
+                    <span className="shortcut-desc">Screenshot your screen for AI analysis</span>
+                  </div>
+                </div>
                 <kbd>⌘ ⇧ S</kbd>
               </div>
+
               <div className="shortcut-row">
-                <span className="shortcut-label">Toggle Settings</span>
-                <kbd>⌘ ⇧ C</kbd>
-              </div>
-              <div className="shortcut-row">
-                <span className="shortcut-label">Toggle Response</span>
-                <kbd>⌘ ⇧ A</kbd>
-              </div>
-              <div className="shortcut-row">
-                <span className="shortcut-label">Toggle Recording</span>
+                <div className="shortcut-left">
+                  <span className="shortcut-icon record">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                    </svg>
+                  </span>
+                  <div className="shortcut-info">
+                    <span className="shortcut-name">Toggle Recording</span>
+                    <span className="shortcut-desc">Start or stop audio transcription</span>
+                  </div>
+                </div>
                 <kbd>⌘ ⇧ M</kbd>
               </div>
+
               <div className="shortcut-row">
-                <span className="shortcut-label">Toggle Transcription</span>
-                <kbd>⌘ ⇧ T</kbd>
+                <div className="shortcut-left">
+                  <span className="shortcut-icon settings">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    </svg>
+                  </span>
+                  <div className="shortcut-info">
+                    <span className="shortcut-name">Toggle Settings</span>
+                    <span className="shortcut-desc">Open or close this panel</span>
+                  </div>
+                </div>
+                <kbd>⌘ ⇧ C</kbd>
               </div>
             </div>
           </div>
-        )}
-
-        {activeTab !== "shortcuts" && (
-          <button
-            className="save-btn"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saved ? "Saved" : saving ? "Saving..." : "Save"}
-          </button>
         )}
       </div>
     </GlassContainer>

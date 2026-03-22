@@ -1,6 +1,50 @@
 use crate::state::AppState;
 use serde::Serialize;
-use tauri::Emitter;
+use tauri::Manager;
+
+#[tauri::command]
+pub fn open_settings(app: tauri::AppHandle) {
+    crate::toggle_window(&app, "config");
+}
+
+#[tauri::command]
+pub async fn complete_onboarding(
+    api_key: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    use tauri_plugin_store::StoreExt;
+
+    state.set_api_key(api_key.clone());
+    state.set_has_onboarded(true);
+
+    let store = app.store("config.json").map_err(|e| e.to_string())?;
+    store.set("api_key", serde_json::json!(api_key));
+    store.set("has_onboarded", serde_json::json!(true));
+    store.save().map_err(|e| e.to_string())?;
+
+    // Close welcome window and open main panel
+    if let Some(welcome) = app.get_webview_window("welcome") {
+        let _ = welcome.close();
+    }
+    crate::create_panel(&app, "main");
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_onboarding_status(state: tauri::State<'_, AppState>) -> bool {
+    state.get_has_onboarded()
+}
+
+#[tauri::command]
+pub fn open_external_url(url: String) -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg(&url)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 #[derive(Serialize)]
 pub struct Config {
@@ -13,6 +57,7 @@ pub struct Config {
     pub whisper_language: String,
     pub audio_source: String,
     pub vocab_seed: String,
+    pub response_language: String,
 }
 
 #[tauri::command]
@@ -27,6 +72,7 @@ pub fn get_config(state: tauri::State<'_, AppState>) -> Config {
         whisper_language: state.get_whisper_language(),
         audio_source: state.get_audio_source(),
         vocab_seed: state.get_vocab_seed(),
+        response_language: state.get_response_language(),
     }
 }
 
@@ -41,6 +87,7 @@ pub fn save_config(
     whisper_language: String,
     audio_source: String,
     vocab_seed: String,
+    response_language: String,
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) {
@@ -53,6 +100,7 @@ pub fn save_config(
     state.set_whisper_language(whisper_language);
     state.set_audio_source(audio_source);
     state.set_vocab_seed(vocab_seed);
+    state.set_response_language(response_language);
 
     #[cfg(target_os = "macos")]
     crate::stealth::set_stealth_for_all_windows(&app, stealth_mode);
@@ -84,80 +132,13 @@ pub fn get_transcription(state: tauri::State<'_, AppState>) -> String {
 }
 
 #[tauri::command]
-pub async fn start_recording(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<(), String> {
-    if state.get_recording() {
-        return Err("Already recording".to_string());
-    }
-
-    let model_size = state.get_whisper_model_size();
-    let language = state.get_whisper_language();
-    let source_str = state.get_audio_source();
-    let vocab_seed = state.get_vocab_seed();
-
-    let source = crate::audio::AudioSource::from_str(&source_str);
-
-    state.set_recording(true);
-    state.set_transcription_text(String::new());
-
-    let (audio_tx, audio_rx) = std::sync::mpsc::channel();
-    let stop_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-
-    crate::audio::start_capture(source, audio_tx, stop_flag.clone())
-        .map_err(|e| {
-            state.set_recording(false);
-            e
-        })?;
-
-    // Store stop signal
-    let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
-    *state.recording_stop_tx.lock().unwrap_or_else(|e| e.into_inner()) = Some(stop_tx);
-
-    // Spawn a thread that waits for stop signal then sets the stop flag
-    let flag_clone = stop_flag.clone();
-    std::thread::spawn(move || {
-        let _ = stop_rx.recv();
-        flag_clone.store(true, std::sync::atomic::Ordering::Relaxed);
-    });
-
-    // Start whisper transcription
-    crate::whisper::start_transcription(
-        app.clone(),
-        audio_rx,
-        stop_flag,
-        model_size,
-        language,
-        vocab_seed,
-    );
-
-    let _ = app.emit("recording-started", ());
-    eprintln!("[phantom] recording started");
-
-    Ok(())
+pub async fn start_recording(app: tauri::AppHandle) -> Result<(), String> {
+    crate::recording::start(&app)
 }
 
 #[tauri::command]
-pub fn stop_recording(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, AppState>,
-) -> Result<String, String> {
-    if !state.get_recording() {
-        return Err("Not recording".to_string());
-    }
-
-    // Send stop signal
-    let tx = state.recording_stop_tx.lock().unwrap_or_else(|e| e.into_inner()).take();
-    if let Some(tx) = tx {
-        let _ = tx.send(());
-    }
-
-    state.set_recording(false);
-    let _ = app.emit("recording-stopped", ());
-    eprintln!("[phantom] recording stopped");
-
-    Ok(state.get_transcription_text())
+pub fn stop_recording(app: tauri::AppHandle) -> Result<String, String> {
+    crate::recording::stop(&app)
 }
 
 #[tauri::command]
@@ -190,12 +171,13 @@ pub async fn send_transcription_to_gemini(
     }
 
     let model = state.get_model();
-    let _ = app.emit("processing-start", ());
+    let response_language = state.get_response_language();
+    let _ = app.emit("processing-start", "transcription");
 
-    match crate::whisper::send_to_gemini(&api_key, &model, &text, &prompt).await {
+    match crate::gemini::send_to_gemini(&api_key, &model, &text, &prompt, &response_language).await {
         Ok(response) => {
             state.set_last_response(Some(response.clone()));
-            let _ = app.emit("capture-response", response);
+            let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "transcription" }));
             Ok(())
         }
         Err(e) => {
