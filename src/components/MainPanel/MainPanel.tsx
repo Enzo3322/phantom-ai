@@ -34,7 +34,7 @@ export function MainPanel() {
   } = useTranscript();
 
   const [dismissedError, setDismissedError] = useState<string | null>(null);
-  const [side, setSide] = useState<"right" | "left">("right");
+  const sideRef = useRef<"right" | "left">("right");
   const scrollRef = useRef<HTMLDivElement>(null);
   const responseRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -87,14 +87,14 @@ export function MainPanel() {
       height = 120;
     }
 
-    const x = side === "right"
+    const x = sideRef.current === "right"
       ? screenWidth - WIDTH - MARGIN
       : MARGIN;
 
     win.setSize(new LogicalSize(WIDTH, height));
     win.setPosition(new LogicalPosition(x, MARGIN));
     win.show();
-  }, [mode, response, transcript, side]);
+  }, [mode, response, transcript]);
 
   // Clear stale Gemini response when a new recording starts
   useEffect(() => {
@@ -134,10 +134,10 @@ export function MainPanel() {
     }
   }, [response]);
 
-  // Listen for dodge-move events from the Rust backend
+  // Sync side ref when Rust backend animates the window
   useEffect(() => {
     const unlisten = listen("dodge-move", () => {
-      setSide((prev) => (prev === "right" ? "left" : "right"));
+      sideRef.current = sideRef.current === "right" ? "left" : "right";
     });
     return () => { unlisten.then((f) => f()); };
   }, []);
