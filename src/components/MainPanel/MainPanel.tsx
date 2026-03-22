@@ -25,6 +25,7 @@ export function MainPanel() {
   const { isRecording, toggleRecording, stopRecording } = useRecording();
   const {
     transcript,
+    preview,
     isComplete,
     error: transcriptionError,
     clearTranscript,
@@ -104,7 +105,7 @@ export function MainPanel() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [transcript]);
+  }, [transcript, preview]);
 
   // Auto-scroll response
   useEffect(() => {
@@ -226,8 +227,16 @@ export function MainPanel() {
           </div>
         </div>
         <div className="main-body" ref={scrollRef}>
-          {transcript ? (
-            <div className="main-transcript">{transcript}</div>
+          {transcript || preview ? (
+            <div className="main-transcript">
+              {transcript}
+              {preview && (
+                <>
+                  {transcript && "\n"}
+                  <span className="transcript-preview">{preview}</span>
+                </>
+              )}
+            </div>
           ) : (
             <div className="main-listening">
               <LoadingSpinner />

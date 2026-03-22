@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 
 export function useTranscript() {
   const [transcript, setTranscript] = useState("");
+  const [preview, setPreview] = useState("");
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,15 +18,21 @@ export function useTranscript() {
     const listeners = [
       listen("recording-started", () => {
         setTranscript("");
+        setPreview("");
         setIsComplete(false);
         setError(null);
       }),
       listen<string>("transcription-partial", (event) => {
         setTranscript(event.payload);
+        setPreview("");
         setError(null);
+      }),
+      listen<string>("transcription-preview", (event) => {
+        setPreview(event.payload);
       }),
       listen<string>("transcription-complete", (event) => {
         setTranscript(event.payload);
+        setPreview("");
         setIsComplete(true);
       }),
       listen<string>("transcription-error", (event) => {
@@ -40,8 +47,9 @@ export function useTranscript() {
 
   const clearTranscript = useCallback(() => {
     setTranscript("");
+    setPreview("");
     setError(null);
   }, []);
 
-  return { transcript, isComplete, error, clearTranscript };
+  return { transcript, preview, isComplete, error, clearTranscript };
 }

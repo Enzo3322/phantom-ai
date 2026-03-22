@@ -215,6 +215,22 @@ impl Vad {
         utterances
     }
 
+    pub fn is_speaking(&self) -> bool {
+        matches!(self.state, VadState::Speech | VadState::MaybeSilence)
+    }
+
+    pub fn speech_buffer_samples(&self) -> usize {
+        self.speech_buffer.len()
+    }
+
+    pub fn peek_buffer(&self) -> Option<(Vec<f32>, Speaker)> {
+        if self.speech_buffer.len() >= MIN_UTTERANCE_SAMPLES {
+            Some((self.speech_buffer.clone(), self.dominant_speaker()))
+        } else {
+            None
+        }
+    }
+
     pub fn flush(&mut self) -> Option<Utterance> {
         if self.speech_buffer.len() >= MIN_UTTERANCE_SAMPLES {
             let speaker = self.dominant_speaker();

@@ -278,6 +278,12 @@
   word-break: break-word;
 }
 
+/* Preview (unconfirmed transcription) */
+.transcript-preview {
+  opacity: 0.45;
+  font-style: italic;
+}
+
 /* Listening state */
 .main-listening {
   display: flex;

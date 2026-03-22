@@ -96,10 +96,18 @@ fn run_transcription_loop(
         let mut locked_language = language.clone();
         let state = app.state::<AppState>();
 
+        // Preview: track last preview size to avoid re-transcribing same audio
+        const PREVIEW_INTERVAL_SAMPLES: usize = vad::SAMPLE_RATE * 3; // every ~3s
+        let mut last_preview_samples: usize = 0;
+
         loop {
             match audio_rx.recv_timeout(std::time::Duration::from_millis(50)) {
                 Ok(tagged) => {
                     for utt in vad.process(&tagged) {
+                        // Clear preview when confirmed utterance arrives
+                        let _ = app.emit("transcription-preview", "");
+                        last_preview_samples = 0;
+
                         if locked_language == "auto" && full_transcript.is_empty() {
                             if let Some(detected) = whisper::detect_language(&ctx, &utt.audio) {
                                 eprintln!("[phantom] auto-detected language: {detected}");
@@ -128,6 +136,27 @@ fn run_transcription_loop(
                                 state.set_transcription_text(full_transcript.clone());
                                 let _ = app.emit("transcription-partial", full_transcript.clone());
                                 eprintln!("[phantom] transcript: {label} {text}");
+                            }
+                        }
+                    }
+
+                    // Preview: while speaking, periodically transcribe the partial buffer
+                    if vad.is_speaking() {
+                        let current_samples = vad.speech_buffer_samples();
+                        if current_samples >= last_preview_samples + PREVIEW_INTERVAL_SAMPLES {
+                            if let Some((audio, speaker)) = vad.peek_buffer() {
+                                last_preview_samples = current_samples;
+                                let lang = if locked_language == "auto" { "auto" } else { &locked_language };
+                                if let Some(text) = whisper::transcribe_segment(&ctx, &audio, lang, &full_transcript, &vocab_seed) {
+                                    if !text.is_empty() {
+                                        let label = match speaker {
+                                            Speaker::User => "[You]",
+                                            Speaker::Other => "[Other]",
+                                        };
+                                        let _ = app.emit("transcription-preview", format!("{label} {text}"));
+                                        eprintln!("[phantom] preview: {label} {text}");
+                                    }
+                                }
                             }
                         }
                     }
