@@ -100,7 +100,7 @@ const VOCAB_PRESETS = [
   },
 ];
 
-type Tab = "general" | "audio" | "shortcuts";
+type Tab = "general" | "audio" | "stealth" | "shortcuts";
 
 export function ConfigPanel() {
   const { config, updateConfig, autoSaved } = useConfig();
@@ -201,6 +201,15 @@ export function ConfigPanel() {
             <line x1="8" y1="23" x2="16" y2="23" />
           </svg>
           Audio
+        </button>
+        <button
+          className={`tab-btn ${activeTab === "stealth" ? "active" : ""}`}
+          onClick={() => setActiveTab("stealth")}
+        >
+          <svg className="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          Stealth
         </button>
         <button
           className={`tab-btn ${activeTab === "shortcuts" ? "active" : ""}`}
@@ -304,43 +313,6 @@ export function ConfigPanel() {
               />
             </div>
 
-            <div className="field">
-              <div className="stealth-row">
-                <div className="stealth-info">
-                  <label>Stealth Mode</label>
-                  <span className="stealth-desc">
-                    Hide window from screenshots and recordings
-                  </span>
-                </div>
-                <button
-                  className={`stealth-toggle ${config.stealth_mode ? "active" : ""}`}
-                  onClick={() =>
-                    updateConfig({ stealth_mode: !config.stealth_mode })
-                  }
-                >
-                  <span className="stealth-toggle-knob" />
-                </button>
-              </div>
-            </div>
-
-            <div className="field">
-              <div className="stealth-row">
-                <div className="stealth-info">
-                  <label>Dodge on Hover</label>
-                  <span className="stealth-desc">
-                    Move window to opposite corner when cursor hovers for 2s
-                  </span>
-                </div>
-                <button
-                  className={`stealth-toggle ${config.dodge_on_hover ? "active" : ""}`}
-                  onClick={() =>
-                    updateConfig({ dodge_on_hover: !config.dodge_on_hover })
-                  }
-                >
-                  <span className="stealth-toggle-knob" />
-                </button>
-              </div>
-            </div>
           </>
         )}
 
@@ -452,6 +424,143 @@ export function ConfigPanel() {
                 onChange={(e) => updateConfig({ vocab_seed: e.target.value })}
                 rows={3}
                 placeholder="Technical terms to help transcription accuracy (e.g., Node.js, árvore binária, API)"
+                spellCheck={false}
+              />
+            </div>
+          </>
+        )}
+
+        {activeTab === "stealth" && (
+          <>
+            <div className="stealth-section-label">Screen & Window</div>
+
+            <div className="field">
+              <div className="stealth-row">
+                <div className="stealth-info">
+                  <label>Stealth Mode</label>
+                  <span className="stealth-desc">
+                    Hide window from screenshots and recordings
+                  </span>
+                </div>
+                <button
+                  className={`stealth-toggle ${config.stealth_mode ? "active" : ""}`}
+                  onClick={() =>
+                    updateConfig({ stealth_mode: !config.stealth_mode })
+                  }
+                >
+                  <span className="stealth-toggle-knob" />
+                </button>
+              </div>
+            </div>
+
+            <div className="field">
+              <div className="stealth-row">
+                <div className="stealth-info">
+                  <label>Passthrough Mode</label>
+                  <span className="stealth-desc">
+                    Window ignores mouse events to prevent focus detection
+                  </span>
+                </div>
+                <button
+                  className={`stealth-toggle ${config.passthrough_mode ? "active" : ""}`}
+                  onClick={() =>
+                    updateConfig({ passthrough_mode: !config.passthrough_mode })
+                  }
+                >
+                  <span className="stealth-toggle-knob" />
+                </button>
+              </div>
+            </div>
+
+            <div className="field">
+              <div className="stealth-row">
+                <div className="stealth-info">
+                  <label>Dodge on Hover</label>
+                  <span className="stealth-desc">
+                    Move window to opposite corner after 2s hover
+                  </span>
+                </div>
+                <button
+                  className={`stealth-toggle ${config.dodge_on_hover ? "active" : ""}`}
+                  onClick={() =>
+                    updateConfig({ dodge_on_hover: !config.dodge_on_hover })
+                  }
+                >
+                  <span className="stealth-toggle-knob" />
+                </button>
+              </div>
+            </div>
+
+            <div className="stealth-section-label">Process</div>
+
+            <div className="field">
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                Process Disguise Name
+              </label>
+              <input
+                type="text"
+                value={config.process_disguise_name}
+                onChange={(e) =>
+                  updateConfig({ process_disguise_name: e.target.value })
+                }
+                placeholder="e.g. com.apple.accessibility"
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="stealth-section-label">Network</div>
+
+            <div className="field">
+              <div className="stealth-row">
+                <div className="stealth-info">
+                  <label>Spoof User-Agent</label>
+                  <span className="stealth-desc">
+                    Disguise API requests as Safari traffic
+                  </span>
+                </div>
+                <button
+                  className={`stealth-toggle ${config.spoof_user_agent ? "active" : ""}`}
+                  onClick={() =>
+                    updateConfig({ spoof_user_agent: !config.spoof_user_agent })
+                  }
+                >
+                  <span className="stealth-toggle-knob" />
+                </button>
+              </div>
+            </div>
+
+            <div className="field">
+              <div className="stealth-row">
+                <div className="stealth-info">
+                  <label>Request Jitter</label>
+                  <span className="stealth-desc">
+                    Random 50-500ms delay before API calls
+                  </span>
+                </div>
+                <button
+                  className={`stealth-toggle ${config.network_jitter ? "active" : ""}`}
+                  onClick={() =>
+                    updateConfig({ network_jitter: !config.network_jitter })
+                  }
+                >
+                  <span className="stealth-toggle-knob" />
+                </button>
+              </div>
+            </div>
+
+            <div className="field">
+              <label>
+                <svg className="field-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2" /><rect x="2" y="14" width="20" height="8" rx="2" ry="2" /><line x1="6" y1="6" x2="6.01" y2="6" /><line x1="6" y1="18" x2="6.01" y2="18" /></svg>
+                Proxy URL
+              </label>
+              <input
+                type="text"
+                value={config.proxy_url}
+                onChange={(e) =>
+                  updateConfig({ proxy_url: e.target.value })
+                }
+                placeholder="socks5://127.0.0.1:1080 (optional)"
                 spellCheck={false}
               />
             </div>

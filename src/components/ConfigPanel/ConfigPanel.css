@@ -388,6 +388,16 @@ kbd {
   transform: translateX(18px);
 }
 
+.stealth-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-tertiary);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--border-glass);
+}
+
 .whisper-model-row {
   display: flex;
   gap: 8px;

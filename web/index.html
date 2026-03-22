@@ -58,6 +58,7 @@
       <span class="logo">Phantom</span>
       <div class="nav-links">
         <a href="#features">Features</a>
+        <a href="#stealth-layers">Stealth</a>
         <a href="#how-it-works">How it works</a>
         <a href="#download">Download</a>
       </div>
@@ -71,12 +72,12 @@
   </section>
 
   <section id="features">
-    <h2 data-animate="fade-up">Features</h2>
+    <h2 data-animate="fade-up">Core Features</h2>
     <div class="features-grid">
       <div class="feature-card" data-animate="scale-in" data-delay="0">
         <div class="feature-icon">&#128373;</div>
         <h3>Stealth Mode</h3>
-        <p>The overlay is invisible to screenshots and screen recordings. Only you can see it.</p>
+        <p>The overlay is invisible to screenshots and screen recordings. Uses macOS private APIs to hide from any screen capture.</p>
       </div>
       <div class="feature-card" data-animate="scale-in" data-delay="1">
         <div class="feature-icon">&#9889;</div>
@@ -102,6 +103,58 @@
         <div class="feature-icon">&#128736;</div>
         <h3>Customizable</h3>
         <p>Custom prompts, vocab context, quick action modes, and response language settings.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="stealth-layers">
+    <h2 data-animate="fade-up">9 Layers of Stealth</h2>
+    <p class="section-subtitle" data-animate="fade-up" data-delay="1">Every detection vector covered. Every layer independently toggleable.</p>
+    <div class="stealth-grid">
+      <div class="stealth-card" data-animate="scale-in" data-delay="0">
+        <div class="stealth-status active"></div>
+        <h3>Screen Capture Evasion</h3>
+        <p>Window is invisible to all screen recording and screenshot tools via <code>setSharingType:0</code>.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="1">
+        <div class="stealth-status active"></div>
+        <h3>Process Masquerading</h3>
+        <p>Disguises its process name at runtime. Scans for known proctoring software on launch.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="1">
+        <div class="stealth-status active"></div>
+        <h3>Window Focus Evasion</h3>
+        <p>Elevated window level, excluded from Expose/Spaces. Passthrough mode prevents focus-steal detection.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="2">
+        <div class="stealth-status active"></div>
+        <h3>Network Traffic Stealth</h3>
+        <p>Spoofed User-Agent, request jitter, and optional proxy support to mask API traffic patterns.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="2">
+        <div class="stealth-status active"></div>
+        <h3>Clipboard Bypass</h3>
+        <p>Types text directly via CGEvents or uses ephemeral clipboard writes that clear in under 50ms.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="3">
+        <div class="stealth-status active"></div>
+        <h3>Multi-Display Awareness</h3>
+        <p>Detects all connected displays, virtual screens, and mirror mode. Auto-positions on secondary monitor.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="3">
+        <div class="stealth-status active"></div>
+        <h3>Proctoring Detection</h3>
+        <p>Scans running processes, localhost ports, and Launch Agents/Daemons for known proctoring tools.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="4">
+        <div class="stealth-status active"></div>
+        <h3>Environment Report</h3>
+        <p>Detects VMs, checks MAC OUIs, scans for VM kexts, and generates a stealth score from 0-100.</p>
+      </div>
+      <div class="stealth-card" data-animate="scale-in" data-delay="4">
+        <div class="stealth-status active"></div>
+        <h3>Dodge on Hover</h3>
+        <p>Auto-moves the window to the opposite corner after 2 seconds of cursor hover, with smooth animation.</p>
       </div>
     </div>
   </section>

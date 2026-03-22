@@ -220,6 +220,75 @@ nav {
   line-height: 1.5;
 }
 
+/* ── Stealth Layers ─────────────────────────────────── */
+#stealth-layers {
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-top: -40px;
+  margin-bottom: 48px;
+}
+
+.stealth-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.stealth-card {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  padding-left: 40px;
+  transition: border-color 0.3s, background 0.3s;
+}
+
+.stealth-card:hover {
+  border-color: rgba(48, 209, 88, 0.3);
+  background: rgba(48, 209, 88, 0.04);
+}
+
+.stealth-status {
+  position: absolute;
+  top: 32px;
+  left: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #555;
+}
+
+.stealth-status.active {
+  background: #30d158;
+  box-shadow: 0 0 8px rgba(48, 209, 88, 0.5);
+}
+
+.stealth-card h3 {
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+.stealth-card p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.stealth-card code {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+  font-size: 0.8em;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
 /* ── How it works ────────────────────────────────────── */
 #how-it-works {
   max-width: var(--max-w);
@@ -354,7 +423,8 @@ footer a {
     padding: 80px 20px;
   }
 
-  .features-grid {
+  .features-grid,
+  .stealth-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -464,6 +534,7 @@ footer a {
 
 /* Section divider line that draws in */
 #features::before,
+#stealth-layers::before,
 #how-it-works::before,
 #shortcuts::before,
 #download::before {
@@ -477,6 +548,7 @@ footer a {
 }
 
 #features.section-visible::before,
+#stealth-layers.section-visible::before,
 #how-it-works.section-visible::before,
 #shortcuts.section-visible::before,
 #download.section-visible::before {

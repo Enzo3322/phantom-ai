@@ -1,5 +1,5 @@
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use crate::network_stealth;
 
 #[derive(Serialize)]
 struct GeminiRequest {
@@ -62,6 +62,9 @@ pub async fn analyze_screenshot(
     base64_image: &str,
     prompt: &str,
     response_language: &str,
+    spoof_ua: bool,
+    jitter: bool,
+    proxy_url: Option<&str>,
 ) -> Result<String, String> {
     let lang_instruction = match response_language {
         "auto" | "" => String::new(),
@@ -69,7 +72,16 @@ pub async fn analyze_screenshot(
     };
     let full_prompt = format!("{prompt}{lang_instruction}");
 
-    let client = Client::new();
+    if jitter {
+        network_stealth::apply_jitter().await;
+    }
+
+    let client = if spoof_ua {
+        network_stealth::build_stealth_client(proxy_url)?
+    } else {
+        reqwest::Client::new()
+    };
+
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
         model, api_key
@@ -141,6 +153,9 @@ pub async fn send_to_gemini(
     text: &str,
     prompt: &str,
     response_language: &str,
+    spoof_ua: bool,
+    jitter: bool,
+    proxy_url: Option<&str>,
 ) -> Result<String, String> {
     let lang_instruction = match response_language {
         "auto" | "" => String::new(),
@@ -148,7 +163,16 @@ pub async fn send_to_gemini(
     };
     let full_prompt = format!("{prompt}{lang_instruction}\n\nTranscription:\n{text}");
 
-    let client = Client::new();
+    if jitter {
+        network_stealth::apply_jitter().await;
+    }
+
+    let client = if spoof_ua {
+        network_stealth::build_stealth_client(proxy_url)?
+    } else {
+        reqwest::Client::new()
+    };
+
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
         model, api_key

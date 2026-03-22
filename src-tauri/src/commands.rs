@@ -1,3 +1,4 @@
+use crate::process_stealth::DetectedProctor;
 use crate::state::AppState;
 use serde::Serialize;
 use tauri::Manager;
@@ -58,6 +59,11 @@ pub struct Config {
     pub vocab_seed: String,
     pub response_language: String,
     pub dodge_on_hover: bool,
+    pub process_disguise_name: String,
+    pub passthrough_mode: bool,
+    pub network_jitter: bool,
+    pub proxy_url: String,
+    pub spoof_user_agent: bool,
 }
 
 #[tauri::command]
@@ -73,6 +79,11 @@ pub fn get_config(state: tauri::State<'_, AppState>) -> Config {
         vocab_seed: state.get_vocab_seed(),
         response_language: state.get_response_language(),
         dodge_on_hover: state.get_dodge_on_hover(),
+        process_disguise_name: state.get_process_disguise_name(),
+        passthrough_mode: state.get_passthrough_mode(),
+        network_jitter: state.get_network_jitter(),
+        proxy_url: state.get_proxy_url(),
+        spoof_user_agent: state.get_spoof_user_agent(),
     }
 }
 
@@ -88,6 +99,11 @@ pub fn save_config(
     vocab_seed: String,
     response_language: String,
     dodge_on_hover: bool,
+    process_disguise_name: String,
+    passthrough_mode: bool,
+    network_jitter: bool,
+    proxy_url: String,
+    spoof_user_agent: bool,
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
 ) {
@@ -101,6 +117,11 @@ pub fn save_config(
     state.set_vocab_seed(vocab_seed);
     state.set_response_language(response_language);
     state.set_dodge_on_hover(dodge_on_hover);
+    state.set_process_disguise_name(process_disguise_name);
+    state.set_passthrough_mode(passthrough_mode);
+    state.set_network_jitter(network_jitter);
+    state.set_proxy_url(proxy_url);
+    state.set_spoof_user_agent(spoof_user_agent);
 
     #[cfg(target_os = "macos")]
     crate::stealth::set_stealth_for_all_windows(&app, stealth_mode);
@@ -174,7 +195,12 @@ pub async fn send_transcription_to_gemini(
     let response_language = state.get_response_language();
     let _ = app.emit("processing-start", "transcription");
 
-    match crate::gemini::send_to_gemini(&api_key, &model, &text, &prompt, &response_language).await {
+    let spoof_ua = state.get_spoof_user_agent();
+    let jitter = state.get_network_jitter();
+    let proxy = state.get_proxy_url();
+    let proxy_ref = if proxy.is_empty() { None } else { Some(proxy.as_str()) };
+
+    match crate::gemini::send_to_gemini(&api_key, &model, &text, &prompt, &response_language, spoof_ua, jitter, proxy_ref).await {
         Ok(response) => {
             state.set_last_response(Some(response.clone()));
             let _ = app.emit("capture-response", serde_json::json!({ "text": response, "source": "transcription" }));
@@ -185,4 +211,56 @@ pub async fn send_transcription_to_gemini(
             Err(e)
         }
     }
+}
+
+#[tauri::command]
+pub fn scan_proctoring(state: tauri::State<'_, AppState>) -> Vec<DetectedProctor> {
+    let detected = crate::process_stealth::scan_proctoring_software();
+    *state.detected_proctors.lock().unwrap_or_else(|e| e.into_inner()) = detected.clone();
+    detected
+}
+
+#[tauri::command]
+pub fn get_detected_proctors(state: tauri::State<'_, AppState>) -> Vec<DetectedProctor> {
+    state.get_detected_proctors()
+}
+
+#[tauri::command]
+pub fn toggle_passthrough(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+    let current = state.get_passthrough_mode();
+    let new_val = !current;
+    state.set_passthrough_mode(new_val);
+
+    if let Some(window) = app.get_webview_window("main") {
+        crate::stealth::set_passthrough_mode(&window, new_val);
+    }
+}
+
+#[tauri::command]
+pub fn get_display_info() -> Vec<crate::display_stealth::DisplayInfo> {
+    crate::display_stealth::enumerate_displays()
+}
+
+#[tauri::command]
+pub fn full_proctor_scan() -> crate::proctor_detect::ProctorScanResult {
+    crate::proctor_detect::full_scan()
+}
+
+#[tauri::command]
+pub fn get_env_report() -> crate::env_report::EnvironmentReport {
+    crate::env_report::generate_report()
+}
+
+#[tauri::command]
+pub async fn type_text(text: String, humanized: bool) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        crate::clipboard_stealth::type_text_via_cgevents(&text, humanized);
+    })
+    .await
+    .map_err(|e| format!("Failed to type text: {e}"))
+}
+
+#[tauri::command]
+pub fn ephemeral_paste(text: String) {
+    crate::clipboard_stealth::ephemeral_paste(&text);
 }

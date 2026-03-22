@@ -1,9 +1,15 @@
 mod audio;
 mod capture;
+mod clipboard_stealth;
 mod commands;
+mod display_stealth;
 mod dodge;
+mod env_report;
 mod gemini;
 mod hallucination;
+mod network_stealth;
+mod process_stealth;
+mod proctor_detect;
 mod recording;
 mod state;
 mod stealth;
@@ -188,8 +194,13 @@ async fn handle_capture(app: tauri::AppHandle) {
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     let _ = app.emit("processing-start", "screenshot");
 
+    let spoof_ua = state.get_spoof_user_agent();
+    let jitter = state.get_network_jitter();
+    let proxy = state.get_proxy_url();
+    let proxy_ref = if proxy.is_empty() { None } else { Some(proxy.as_str()) };
+
     eprintln!("[phantom] capture: calling gemini (model={model})");
-    match gemini::analyze_screenshot(&api_key, &model, &base64_image, &prompt, &response_language).await {
+    match gemini::analyze_screenshot(&api_key, &model, &base64_image, &prompt, &response_language, spoof_ua, jitter, proxy_ref).await {
         Ok(response) => {
             eprintln!("[phantom] capture: gemini ok, {} chars", response.len());
             state.set_last_response(Some(response.clone()));
@@ -269,6 +280,14 @@ pub fn run() {
             commands::complete_onboarding,
             commands::get_onboarding_status,
             commands::open_external_url,
+            commands::scan_proctoring,
+            commands::get_detected_proctors,
+            commands::toggle_passthrough,
+            commands::get_display_info,
+            commands::full_proctor_scan,
+            commands::get_env_report,
+            commands::type_text,
+            commands::ephemeral_paste,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -301,6 +320,7 @@ pub fn run() {
                 create_panel(&handle, "main");
             }
 
+            process_stealth::apply_process_stealth(&handle);
             dodge::start_dodge_watcher(handle.clone());
 
             Ok(())
@@ -369,6 +389,31 @@ fn load_config_from_store(app: &tauri::AppHandle) {
         if let Some(val) = store.get("dodge_on_hover") {
             if let Some(b) = val.as_bool() {
                 state.set_dodge_on_hover(b);
+            }
+        }
+        if let Some(val) = store.get("process_disguise_name") {
+            if let Some(s) = val.as_str() {
+                state.set_process_disguise_name(s.to_string());
+            }
+        }
+        if let Some(val) = store.get("passthrough_mode") {
+            if let Some(b) = val.as_bool() {
+                state.set_passthrough_mode(b);
+            }
+        }
+        if let Some(val) = store.get("network_jitter") {
+            if let Some(b) = val.as_bool() {
+                state.set_network_jitter(b);
+            }
+        }
+        if let Some(val) = store.get("proxy_url") {
+            if let Some(s) = val.as_str() {
+                state.set_proxy_url(s.to_string());
+            }
+        }
+        if let Some(val) = store.get("spoof_user_agent") {
+            if let Some(b) = val.as_bool() {
+                state.set_spoof_user_agent(b);
             }
         }
 

@@ -13,6 +13,11 @@ interface Config {
   vocab_seed: string;
   response_language: string;
   dodge_on_hover: boolean;
+  process_disguise_name: string;
+  passthrough_mode: boolean;
+  network_jitter: boolean;
+  proxy_url: string;
+  spoof_user_agent: boolean;
 }
 
 export function useConfig() {
@@ -28,6 +33,11 @@ export function useConfig() {
     vocab_seed: "",
     response_language: "auto",
     dodge_on_hover: false,
+    process_disguise_name: "",
+    passthrough_mode: false,
+    network_jitter: true,
+    proxy_url: "",
+    spoof_user_agent: true,
   });
   const [autoSaved, setAutoSaved] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -48,6 +58,11 @@ export function useConfig() {
       vocabSeed: newConfig.vocab_seed,
       responseLanguage: newConfig.response_language,
       dodgeOnHover: newConfig.dodge_on_hover,
+      processDisguiseName: newConfig.process_disguise_name,
+      passthroughMode: newConfig.passthrough_mode,
+      networkJitter: newConfig.network_jitter,
+      proxyUrl: newConfig.proxy_url,
+      spoofUserAgent: newConfig.spoof_user_agent,
     });
 
     const store = await load("config.json");
@@ -61,6 +76,11 @@ export function useConfig() {
     await store.set("vocab_seed", newConfig.vocab_seed);
     await store.set("response_language", newConfig.response_language);
     await store.set("dodge_on_hover", newConfig.dodge_on_hover);
+    await store.set("process_disguise_name", newConfig.process_disguise_name);
+    await store.set("passthrough_mode", newConfig.passthrough_mode);
+    await store.set("network_jitter", newConfig.network_jitter);
+    await store.set("proxy_url", newConfig.proxy_url);
+    await store.set("spoof_user_agent", newConfig.spoof_user_agent);
     await store.save();
 
     setAutoSaved(true);

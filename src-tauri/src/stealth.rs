@@ -2,6 +2,20 @@
 
 use tauri::WebviewWindow;
 
+/// NSWindowCollectionBehavior flags
+#[cfg(target_os = "macos")]
+const NS_WINDOW_COLLECTION_BEHAVIOR_CAN_JOIN_ALL_SPACES: u64 = 1 << 0;
+#[cfg(target_os = "macos")]
+const NS_WINDOW_COLLECTION_BEHAVIOR_IGNORES_CYCLE: u64 = 1 << 4;
+#[cfg(target_os = "macos")]
+const NS_WINDOW_COLLECTION_BEHAVIOR_FULL_SCREEN_AUXILIARY: u64 = 1 << 8;
+
+/// Window levels
+#[cfg(target_os = "macos")]
+const NS_SCREEN_SAVER_WINDOW_LEVEL: i64 = 1000;
+#[cfg(target_os = "macos")]
+const NS_STATUS_WINDOW_LEVEL: i64 = 25;
+
 #[cfg(target_os = "macos")]
 pub fn apply_stealth(window: &WebviewWindow, stealth_enabled: bool) {
     use cocoa::base::{id, nil};
@@ -17,6 +31,17 @@ pub fn apply_stealth(window: &WebviewWindow, stealth_enabled: bool) {
             // Transparent background so CSS handles it
             let _: () = msg_send![ns_window, setBackgroundColor: cocoa::appkit::NSColor::clearColor(nil)];
             let _: () = msg_send![ns_window, setOpaque: false];
+
+            if stealth_enabled {
+                // Elevate window level above proctoring overlays
+                let _: () = msg_send![ns_window, setLevel: NS_STATUS_WINDOW_LEVEL];
+
+                // Exclude from Expose, Spaces cycling, and fullscreen detection
+                let behavior: u64 = NS_WINDOW_COLLECTION_BEHAVIOR_CAN_JOIN_ALL_SPACES
+                    | NS_WINDOW_COLLECTION_BEHAVIOR_IGNORES_CYCLE
+                    | NS_WINDOW_COLLECTION_BEHAVIOR_FULL_SCREEN_AUXILIARY;
+                let _: () = msg_send![ns_window, setCollectionBehavior: behavior];
+            }
 
             // Round corners via CALayer
             let content_view: id = msg_send![ns_window, contentView];
@@ -38,6 +63,30 @@ pub fn apply_stealth(window: &WebviewWindow, stealth_enabled: bool) {
                     }
                 }
             }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn set_window_level(window: &WebviewWindow, level: i64) {
+    use cocoa::base::id;
+    use objc::{msg_send, sel, sel_impl};
+
+    if let Ok(ns_window) = window.ns_window() {
+        unsafe {
+            let _: () = msg_send![ns_window as id, setLevel: level];
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn set_passthrough_mode(window: &WebviewWindow, enabled: bool) {
+    use cocoa::base::id;
+    use objc::{msg_send, sel, sel_impl};
+
+    if let Ok(ns_window) = window.ns_window() {
+        unsafe {
+            let _: () = msg_send![ns_window as id, setIgnoresMouseEvents: enabled];
         }
     }
 }

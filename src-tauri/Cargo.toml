@@ -23,11 +23,13 @@ base64 = "0.22"
 cpal = "0.15"
 whisper-rs = "0.12"
 dirs = "5"
+rand = "0.8"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
 objc = "0.2"
 block = "0.1"
+core-graphics = "0.24"
 
 [profile.release]
 opt-level = 3
