@@ -15,7 +15,9 @@ import "./MainPanel.css";
 
 const WIDTH = 380;
 const IDLE_HEIGHT = 48;
-const MAX_HEIGHT = 600;
+const MIN_RESPONSE_HEIGHT = 120;
+const TITLEBAR_HEIGHT = 40;
+const PADDING = 24;
 const MARGIN = 16;
 
 type Mode = "idle" | "response" | "recording" | "processing" | "error";
@@ -34,6 +36,7 @@ export function MainPanel() {
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const responseRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const screenRef = useRef({ width: 1440, height: 900 });
 
   const error = geminiError || transcriptionError;
@@ -63,14 +66,15 @@ export function MainPanel() {
   useEffect(() => {
     const { width: screenWidth, height: screenHeight } = screenRef.current;
     const win = getCurrentWindow();
+    const maxHeight = screenHeight - MARGIN * 2;
 
     let height: number;
     if (mode === "recording") {
       height = 400;
     } else if (mode === "response") {
-      height = transcript
-        ? screenHeight - MARGIN * 2
-        : Math.min(MAX_HEIGHT, screenHeight - MARGIN * 2);
+      const contentHeight = contentRef.current?.scrollHeight ?? 0;
+      const computed = TITLEBAR_HEIGHT + contentHeight + PADDING;
+      height = Math.max(MIN_RESPONSE_HEIGHT, Math.min(computed, maxHeight));
     } else if (mode === "processing") {
       height = 120;
     } else {
@@ -81,7 +85,7 @@ export function MainPanel() {
     win.setPosition(
       new LogicalPosition(screenWidth - WIDTH - MARGIN, MARGIN)
     );
-  }, [mode, transcript]);
+  }, [mode, response, transcript]);
 
   // Clear stale Gemini response when a new recording starts
   useEffect(() => {
@@ -89,6 +93,13 @@ export function MainPanel() {
       clearResponse();
     }
   }, [isRecording, clearResponse]);
+
+  // Clear transcript when a screenshot processing starts (not from transcription)
+  useEffect(() => {
+    if (geminiLoading && geminiSource === "screenshot") {
+      clearTranscript();
+    }
+  }, [geminiLoading, geminiSource, clearTranscript]);
 
   // Auto-send to Gemini ONLY after transcription is fully complete
   useEffect(() => {
@@ -301,7 +312,7 @@ export function MainPanel() {
   const responseLabel = geminiSource === "screenshot" ? "Screenshot" : "Response";
 
   return (
-    <div className="main-panel">
+    <div className="main-panel" ref={contentRef}>
       <div className="main-titlebar" data-tauri-drag-region>
         <div className="main-title-left">
           {geminiSource === "screenshot" ? (

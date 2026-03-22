@@ -5,7 +5,7 @@ pub const MAX_UTTERANCE_SAMPLES: usize = SAMPLE_RATE * 30;
 pub const MIN_UTTERANCE_SAMPLES: usize = SAMPLE_RATE / 2;
 
 const VAD_FRAME_SIZE: usize = SAMPLE_RATE / 50; // 20ms
-const SILENCE_DURATION_MS: usize = 800;
+const SILENCE_DURATION_MS: usize = 500;
 const SILENCE_FRAMES: usize = (SILENCE_DURATION_MS * SAMPLE_RATE) / (1000 * VAD_FRAME_SIZE);
 const MIN_SPEECH_FRAMES: usize = 3;
 const SPEECH_WINDOW_FRAMES: usize = 5;
@@ -223,9 +223,9 @@ impl Vad {
         self.speech_buffer.len()
     }
 
-    pub fn peek_buffer(&self) -> Option<(Vec<f32>, Speaker)> {
+    pub fn peek_buffer(&self) -> Option<(&[f32], Speaker)> {
         if self.speech_buffer.len() >= MIN_UTTERANCE_SAMPLES {
-            Some((self.speech_buffer.clone(), self.dominant_speaker()))
+            Some((&self.speech_buffer, self.dominant_speaker()))
         } else {
             None
         }

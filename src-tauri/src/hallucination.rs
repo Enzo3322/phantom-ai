@@ -2,9 +2,12 @@ use crate::vad::{self, Vad};
 
 pub fn trim_trailing_silence(audio: &[f32]) -> &[f32] {
     let frame = vad::SAMPLE_RATE / 50; // 20ms frames
+    // Only search the last 2 seconds — trailing silence rarely exceeds this
+    let search_limit = vad::SAMPLE_RATE * 2;
+    let search_start = audio.len().saturating_sub(search_limit);
     let mut last_speech_end = audio.len();
 
-    for start in (0..audio.len()).rev().step_by(frame) {
+    for start in (search_start..audio.len()).rev().step_by(frame) {
         let end = (start + frame).min(audio.len());
         let chunk = &audio[start..end];
         let rms = Vad::frame_rms(chunk);

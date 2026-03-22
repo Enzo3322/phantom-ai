@@ -70,6 +70,55 @@ pub fn stop(app: &AppHandle) -> Result<String, String> {
     Ok(state.get_transcription_text())
 }
 
+struct PreviewJob {
+    audio: Vec<f32>,
+    speaker: Speaker,
+    language: String,
+    context: String,
+    vocab_seed: String,
+}
+
+fn spawn_preview_thread(
+    app: AppHandle,
+    model_size: String,
+) -> Option<mpsc::SyncSender<PreviewJob>> {
+    let (tx, rx) = mpsc::sync_channel::<PreviewJob>(1);
+
+    std::thread::spawn(move || {
+        let ctx = match whisper::load_model(&app, &model_size) {
+            Ok(ctx) => ctx,
+            Err(e) => {
+                eprintln!("[phantom] preview: failed to load model: {e}");
+                return;
+            }
+        };
+        eprintln!("[phantom] preview: model loaded");
+
+        while let Ok(job) = rx.recv() {
+            if let Some(text) = whisper::transcribe_segment(
+                &ctx,
+                &job.audio,
+                &job.language,
+                &job.context,
+                &job.vocab_seed,
+            ) {
+                if !text.is_empty() {
+                    let label = match job.speaker {
+                        Speaker::User => "[You]",
+                        Speaker::Other => "[Other]",
+                    };
+                    let _ = app.emit("transcription-preview", format!("{label} {text}"));
+                    eprintln!("[phantom] preview: {label} {text}");
+                }
+            }
+        }
+
+        eprintln!("[phantom] preview: thread exiting");
+    });
+
+    Some(tx)
+}
+
 fn run_transcription_loop(
     app: AppHandle,
     audio_rx: mpsc::Receiver<audio::TaggedAudio>,
@@ -91,20 +140,21 @@ fn run_transcription_loop(
             "[phantom] whisper model loaded, starting VAD-based transcription (lang={language})"
         );
 
+        // Spawn preview thread with its own whisper context
+        let preview_tx = spawn_preview_thread(app.clone(), model_size);
+
         let mut vad = Vad::new();
         let mut full_transcript = String::new();
         let mut locked_language = language.clone();
         let state = app.state::<AppState>();
 
-        // Preview: track last preview size to avoid re-transcribing same audio
-        const PREVIEW_INTERVAL_SAMPLES: usize = vad::SAMPLE_RATE * 3; // every ~3s
+        const PREVIEW_INTERVAL_SAMPLES: usize = vad::SAMPLE_RATE * 2;
         let mut last_preview_samples: usize = 0;
 
         loop {
             match audio_rx.recv_timeout(std::time::Duration::from_millis(50)) {
                 Ok(tagged) => {
                     for utt in vad.process(&tagged) {
-                        // Clear preview when confirmed utterance arrives
                         let _ = app.emit("transcription-preview", "");
                         last_preview_samples = 0;
 
@@ -134,28 +184,29 @@ fn run_transcription_loop(
                                 full_transcript.push_str(&format!("{label} {text}"));
 
                                 state.set_transcription_text(full_transcript.clone());
-                                let _ = app.emit("transcription-partial", full_transcript.clone());
+                                let _ =
+                                    app.emit("transcription-partial", full_transcript.clone());
                                 eprintln!("[phantom] transcript: {label} {text}");
                             }
                         }
                     }
 
-                    // Preview: while speaking, periodically transcribe the partial buffer
+                    // Non-blocking preview: send job to preview thread
                     if vad.is_speaking() {
                         let current_samples = vad.speech_buffer_samples();
                         if current_samples >= last_preview_samples + PREVIEW_INTERVAL_SAMPLES {
                             if let Some((audio, speaker)) = vad.peek_buffer() {
-                                last_preview_samples = current_samples;
-                                let lang = if locked_language == "auto" { "auto" } else { &locked_language };
-                                if let Some(text) = whisper::transcribe_segment(&ctx, &audio, lang, &full_transcript, &vocab_seed) {
-                                    if !text.is_empty() {
-                                        let label = match speaker {
-                                            Speaker::User => "[You]",
-                                            Speaker::Other => "[Other]",
-                                        };
-                                        let _ = app.emit("transcription-preview", format!("{label} {text}"));
-                                        eprintln!("[phantom] preview: {label} {text}");
-                                    }
+                                if let Some(ref tx) = preview_tx {
+                                    let job = PreviewJob {
+                                        audio: audio.to_vec(),
+                                        speaker,
+                                        language: locked_language.clone(),
+                                        context: full_transcript.clone(),
+                                        vocab_seed: vocab_seed.clone(),
+                                    };
+                                    // try_send: if previous preview still running, skip this one
+                                    let _ = tx.try_send(job);
+                                    last_preview_samples = current_samples;
                                 }
                             }
                         }
@@ -203,6 +254,9 @@ fn run_transcription_loop(
                 break;
             }
         }
+
+        // Drop preview_tx to signal the preview thread to exit
+        drop(preview_tx);
 
         let final_text = full_transcript.trim().to_string();
         state.set_transcription_text(final_text.clone());

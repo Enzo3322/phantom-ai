@@ -5,6 +5,13 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 use crate::hallucination;
 use crate::vad;
 
+fn whisper_threads() -> i32 {
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(4);
+    (cores / 2).max(4) as i32
+}
+
 // --- Model Management ---
 
 pub fn models_dir(app: &AppHandle) -> PathBuf {
@@ -132,7 +139,7 @@ pub fn detect_language(ctx: &WhisperContext, audio: &[f32]) -> Option<String> {
     let mut state = ctx.create_state().ok()?;
 
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_n_threads(4);
+    params.set_n_threads(whisper_threads());
     params.set_print_progress(false);
     params.set_print_realtime(false);
     params.set_print_timestamps(false);
@@ -168,7 +175,7 @@ pub fn transcribe_segment(
     let mut state = ctx.create_state().ok()?;
 
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_n_threads(4);
+    params.set_n_threads(whisper_threads());
     params.set_print_progress(false);
     params.set_print_realtime(false);
     params.set_print_timestamps(false);
