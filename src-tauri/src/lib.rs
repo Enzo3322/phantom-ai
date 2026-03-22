@@ -259,6 +259,14 @@ pub fn run() {
                         tauri::async_runtime::spawn(async move {
                             handle_toggle_recording(handle).await;
                         });
+                    } else if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::KeyO) {
+                        let handle = app.clone();
+                        let state = app.state::<AppState>();
+                        if state.get_watcher_active() {
+                            watcher::stop_watcher(app);
+                        } else {
+                            watcher::start_watcher(handle);
+                        }
                     }
                 })
                 .build(),
@@ -289,6 +297,8 @@ pub fn run() {
             commands::get_env_report,
             commands::type_text,
             commands::ephemeral_paste,
+            commands::get_watcher_status,
+            commands::toggle_watcher,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -299,6 +309,7 @@ pub fn run() {
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyC),
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyM),
                 (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyA),
+                (Modifiers::SUPER | Modifiers::SHIFT, Code::KeyO),
             ];
 
             for (modifiers, code) in &shortcuts {
