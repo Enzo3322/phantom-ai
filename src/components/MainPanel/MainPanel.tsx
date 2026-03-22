@@ -50,6 +50,8 @@ export function MainPanel() {
   const sideRef = useRef<"right" | "left">("right");
   const scrollRef = useRef<HTMLDivElement>(null);
   const responseRef = useRef<HTMLDivElement>(null);
+  const markdownRef = useRef<HTMLDivElement>(null);
+  const transcriptContentRef = useRef<HTMLDivElement>(null);
   const screenRef = useRef({ width: 1440, height: 900 });
 
   const error = geminiError || transcriptionError;
@@ -92,10 +94,11 @@ export function MainPanel() {
     if (mode === "recording") {
       height = 400;
     } else if (mode === "response") {
-      const bodyHeight = responseRef.current?.scrollHeight ?? 0;
-      const transcriptHeight = scrollRef.current?.scrollHeight ?? 0;
+      const bodyHeight = (markdownRef.current?.scrollHeight ?? 0) + 24;
+      const transcriptHeight = transcriptContentRef.current?.scrollHeight ?? 0;
+      const transcriptPadding = transcriptHeight > 0 ? 24 : 0;
       const divider = transcriptHeight > 0 ? 1 : 0;
-      const computed = TITLEBAR_HEIGHT + transcriptHeight + divider + bodyHeight + PADDING;
+      const computed = TITLEBAR_HEIGHT + transcriptHeight + transcriptPadding + divider + bodyHeight + PADDING;
       height = Math.max(MIN_RESPONSE_HEIGHT, Math.min(computed, maxHeight));
     } else if (mode === "processing") {
       height = 120;
@@ -374,13 +377,13 @@ export function MainPanel() {
       {transcript && (
         <>
           <div className="main-body" ref={scrollRef}>
-            <div className="main-transcript">{transcript}</div>
+            <div className="main-transcript" ref={transcriptContentRef}>{transcript}</div>
           </div>
           <div className="main-response-divider" />
         </>
       )}
       <div className={transcript ? "main-response-area" : "main-body"} ref={responseRef}>
-        <div className="markdown-body">
+        <div className="markdown-body" ref={markdownRef}>
           <Markdown>{response}</Markdown>
         </div>
       </div>
