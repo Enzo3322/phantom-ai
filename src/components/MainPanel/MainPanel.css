@@ -576,3 +576,41 @@
   font-weight: 500;
 }
 
+/* History navigation */
+.history-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+}
+
+.history-nav-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+  border-radius: 3px;
+}
+
+.history-nav-btn:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.history-nav-btn:disabled {
+  color: rgba(255, 255, 255, 0.15);
+  cursor: default;
+}
+
+.history-counter {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+

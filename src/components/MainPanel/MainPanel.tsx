@@ -23,7 +23,20 @@ const MARGIN = 0;
 type Mode = "idle" | "response" | "recording" | "processing" | "error";
 
 export function MainPanel() {
-  const { response, loading: geminiLoading, error: geminiError, source: geminiSource, model, clearResponse } = useGemini();
+  const {
+    response,
+    loading: geminiLoading,
+    error: geminiError,
+    source: geminiSource,
+    model,
+    clearResponse,
+    goBack,
+    goForward,
+    canGoBack,
+    canGoForward,
+    historyCount,
+    historyIndex,
+  } = useGemini();
   const { isRecording, toggleRecording, stopRecording } = useRecording();
   const {
     transcript,
@@ -305,6 +318,29 @@ export function MainPanel() {
           {model && <span className="model-badge">{model.replace("gemini-", "")}</span>}
         </div>
         <div className="main-title-right">
+          {historyCount > 1 && (
+            <div className="history-nav">
+              <button
+                className="history-nav-btn"
+                onClick={goBack}
+                disabled={!canGoBack}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <span className="history-counter">{historyIndex + 1}/{historyCount}</span>
+              <button
+                className="history-nav-btn"
+                onClick={goForward}
+                disabled={!canGoForward}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            </div>
+          )}
           <button className="main-copy-btn" onClick={() => {
             if (response) {
               navigator.clipboard.writeText(response);
