@@ -14,6 +14,7 @@ mod recording;
 mod state;
 mod stealth;
 mod vad;
+mod watcher;
 mod whisper;
 
 use state::AppState;
